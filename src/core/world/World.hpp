@@ -40,11 +40,15 @@ public:
     void update(float deltaTime);
     void render();
     void handleInput(SDL_Event& event);
+    std::optional<Entity> tryInteract(const SDL_Event& event);
 
     Camera2D& getCamera() { return m_Camera; }
     TileMap& getTileMap() { return m_TileMap; }
     SpriteAtlas& getTileMapAtlas() { return m_TileMapAtlas; }
     ComponentStorage<InventoryComponent>& getInventories() { return m_Inventories; }
+    ComponentStorage<MachineInventoryComponent>& getMachineInventories() { return m_MachineInventories; }
+    ComponentStorage<CraftingMachineComponent>& getCraftingMachines() { return m_CraftingMachines; }
+    const RecipeDatabase& getRecipeDatabase() const { return m_RecipeDatabase; }
     Entity getPlayer() { return m_Player; }
 
 private:

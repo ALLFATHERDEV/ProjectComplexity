@@ -44,6 +44,10 @@ void World::handleInput(SDL_Event &event) {
     m_InteractionSystem.handleInput(event, m_Player, m_Positions, m_Interactions);
 }
 
+std::optional<Entity> World::tryInteract(const SDL_Event &event) {
+    return m_InteractionSystem.handleInput(event, m_Player, m_Positions, m_Interactions);
+}
+
 void World::setRenderer(Renderer *renderer) {
     m_Renderer = renderer;
 }
@@ -78,8 +82,8 @@ void World::initializeWorld() {
     testRecipe.uniqueName = "test_recipe";
     testRecipe.inputs.push_back({ "iron_ingot", 2 });
     testRecipe.outputItemName = "copper_ingot";
-    testRecipe.outputAmount = 4;
-    testRecipe.craftTime = 3.0f;
+    testRecipe.outputAmount = 3;
+    testRecipe.craftTime = 5.0f;
     m_RecipeDatabase.addRecipe(testRecipe);
 
     m_Machine = factory.createCraftingMachine({ 100.0f, 100.0f }, m_TileMapAtlas.getSprite(0, 3));
@@ -87,7 +91,7 @@ void World::initializeWorld() {
     const ItemDefinition* iron = m_ItemDatabase.getItem("iron_ingot");
     auto* machineInventory = m_MachineInventories.get(m_Machine);
     if (iron && machineInventory) {
-        machineInventory->inputInventory.addItem(iron, 3);
+        machineInventory->inputInventory.addItem(iron, 4);
     }
 
     LOG_INFO("World initialized");

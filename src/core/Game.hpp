@@ -6,6 +6,8 @@
 #include "editor/TileMapEditor.hpp"
 #include "graphics/Renderer.hpp"
 #include "gui/GUISystem.hpp"
+#include "gui/craftingmachine/GUIMachine.hpp"
+#include "gui/elements/GUIDragPeview.hpp"
 #include "gui/elements/GUIInventoryGrid.hpp"
 #include "gui/elements/GUIPanel.hpp"
 #include "world/World.hpp"
@@ -20,7 +22,6 @@ public:
     void events();
     void render();
 
-
     static int WINDOW_WIDTH;
     static int WINDOW_HEIGHT;
 
@@ -31,6 +32,9 @@ private:
     GUISystem m_GUISystem;
     GUIPanel* m_InventoryPanel = nullptr;
     GUIInventoryGrid* m_PlayerInventoryGrid = nullptr;
+    GUIMachine m_MachineGUI;
+    GUIDragContext m_GUIDragContext;
+    GUIDragPreview* m_GUIDragPreview;
 
     Renderer m_Renderer;
     World m_World;

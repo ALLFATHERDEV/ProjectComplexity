@@ -2,15 +2,15 @@
 
 #include "../../Logger.hpp"
 
-void InteractionSystem::handleInput(const SDL_Event &event, Entity player, ComponentStorage<PositionComponent> &positions, ComponentStorage<InteractionComponent> &interactions) {
+std::optional<Entity> InteractionSystem::handleInput(const SDL_Event &event, Entity player, ComponentStorage<PositionComponent> &positions, ComponentStorage<InteractionComponent> &interactions) {
     if (event.type != SDL_EVENT_KEY_DOWN)
-        return;
+        return std::nullopt;
     if (event.key.key != SDLK_E)
-        return;
+        return std::nullopt;
 
     auto* playerPos = positions.get(player);
     if (!playerPos)
-        return;
+        return std::nullopt;
 
     SDL_FRect playerRect{static_cast<float>(playerPos->position.x), static_cast<float>(playerPos->position.y), 32.0f, 32.0f};
 
@@ -35,9 +35,10 @@ void InteractionSystem::handleInput(const SDL_Event &event, Entity player, Compo
 
         if (intersects(playerRect, interactionRect)) {
             LOG_INFO("Interacted with {}", interaction.interactionName);
-            return;
+            return entity;
         }
     }
+    return std::nullopt;
 }
 
 bool InteractionSystem::intersects(const SDL_FRect &a, const SDL_FRect &b) {

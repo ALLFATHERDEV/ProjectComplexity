@@ -1,4 +1,6 @@
 #pragma once
+
+#include <optional>
 #include "../ComponentStorage.hpp"
 #include "../component/InteractionComponent.hpp"
 #include "../component/PositionComponent.hpp"
@@ -6,7 +8,7 @@
 
 class InteractionSystem {
 public:
-    void handleInput(const SDL_Event& event, Entity player, ComponentStorage<PositionComponent>& positions, ComponentStorage<InteractionComponent>& interactions);
+    std::optional<Entity> handleInput(const SDL_Event& event, Entity player, ComponentStorage<PositionComponent>& positions, ComponentStorage<InteractionComponent>& interactions);
 
 private:
     bool intersects(const SDL_FRect& a, const SDL_FRect& b);

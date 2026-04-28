@@ -1,4 +1,5 @@
 #pragma once
+#include "../GUIDragContext.hpp"
 #include "../GUIElement.hpp"
 #include "../../inventory/InventoryGrid.hpp"
 
@@ -67,7 +68,7 @@ public:
 
                 drawStack(renderer, slot->stack, slotRect);
 
-                if (isSlotHovered(slotRect) && !slot->isEmpty() && !m_IsDragging) {
+                if (isSlotHovered(slotRect) && !slot->isEmpty() && !m_DragContext) {
                     hoveredStack = slot->stack;
                     hasHoveredStack = true;
                 }
@@ -78,7 +79,10 @@ public:
             renderTooltip(renderer, hoveredStack);
         }
 
-        renderDraggedStack(renderer);
+    }
+
+    void setDragContext(GUIDragContext* dragContext) {
+        m_DragContext = dragContext;
     }
 
 private:
@@ -97,8 +101,23 @@ private:
         renderer->drawText(stack.item->displayName, tooltipRect.x + 8.0f, tooltipRect.y + 7.0f, SDL_Color{255, 255, 255, 255});
     }
 
+    bool containsGridPoint(float mouseX, float mouseY) {
+        float gridWidth =
+            m_Inventory->getWidth() * m_SlotSize +
+            (m_Inventory->getWidth() - 1) * m_Spacing;
+
+        float gridHeight =
+            m_Inventory->getHeight() * m_SlotSize +
+            (m_Inventory->getHeight() - 1) * m_Spacing;
+
+        return mouseX >= m_Position.x &&
+               mouseY >= m_Position.y &&
+               mouseX <= m_Position.x + gridWidth &&
+               mouseY <= m_Position.y + gridHeight;
+    }
+
     InventorySlot* getSlotAt(float mouseX, float mouseY) {
-        if (!containsPoint(mouseX, mouseY))
+        if (!containsGridPoint(mouseX, mouseY))
             return nullptr;
 
         float localX = mouseX - m_Position.x;
@@ -131,100 +150,100 @@ private:
         }
     }
 
-    void renderDraggedStack(Renderer* renderer) {
-        if (!m_IsDragging || m_DraggedStack.isEmpty())
-            return;
-
-        float mouseX;
-        float mouseY;
-        SDL_GetMouseState(&mouseX, &mouseY);
-
-        SDL_FRect dragRect{ mouseX - m_SlotSize * 0.5f, mouseY - m_SlotSize * 0.5f, m_SlotSize, m_SlotSize };
-        drawStack(renderer, m_DraggedStack, dragRect);
-    }
-
     void handleLeftClick(InventorySlot* clickedSlot) {
-        if (!m_IsDragging && clickedSlot->isEmpty())
+        if (!m_DragContext)
             return;
 
-        if (!m_IsDragging) {
-            m_DraggedStack = clickedSlot->stack;
+        if (!m_DragContext->isDragging && clickedSlot->isEmpty())
+            return;
+
+        if (!m_DragContext->isDragging) {
+            m_DragContext->draggedStack = clickedSlot->stack;
             clickedSlot->stack.clear();
-            m_IsDragging = true;
+            m_DragContext->isDragging = true;
             return;
         }
 
         if (clickedSlot->isEmpty()) {
-            clickedSlot->stack = m_DraggedStack;
-            m_DraggedStack.clear();
-            m_IsDragging = false;
+            clickedSlot->stack = m_DragContext->draggedStack;
+            m_DragContext->clear();
             return;
         }
 
-        if (clickedSlot->stack.item == m_DraggedStack.item) {
+        if (clickedSlot->stack.item == m_DragContext->draggedStack.item) {
             int maxStack = clickedSlot->stack.item->maxStackSize;
             int space = maxStack - clickedSlot->stack.amount;
 
             if (space > 0) {
-                int toMove = std::min(space, m_DraggedStack.amount);
-                clickedSlot->stack.amount += toMove;
-                m_DraggedStack.amount -= toMove;
+                int toMove = std::min(space, m_DragContext->draggedStack.amount);
 
-                if (m_DraggedStack.amount <= 0) {
-                    m_DraggedStack.clear();
-                    m_IsDragging = false;
+                clickedSlot->stack.amount += toMove;
+                m_DragContext->draggedStack.amount -= toMove;
+
+                if (m_DragContext->draggedStack.amount <= 0) {
+                    m_DragContext->clear();
                 }
 
                 return;
             }
         }
 
-        std::swap(clickedSlot->stack, m_DraggedStack);
+        std::swap(clickedSlot->stack, m_DragContext->draggedStack);
+
     }
 
     void handleRightClick(InventorySlot* clickedSlot) {
-        if (!m_IsDragging && clickedSlot->isEmpty())
+        if (!m_DragContext)
             return;
 
-        if (!m_IsDragging) {
+        if (!m_DragContext->isDragging && clickedSlot->isEmpty())
+            return;
+
+        if (!m_DragContext->isDragging)
+        {
             int splitAmount = (clickedSlot->stack.amount + 1) / 2;
-            m_DraggedStack.item = clickedSlot->stack.item;
-            m_DraggedStack.amount = splitAmount;
+
+            m_DragContext->draggedStack.item = clickedSlot->stack.item;
+            m_DragContext->draggedStack.amount = splitAmount;
+
             clickedSlot->stack.amount -= splitAmount;
 
             if (clickedSlot->stack.amount <= 0)
                 clickedSlot->stack.clear();
 
-            m_IsDragging = true;
+            m_DragContext->isDragging = true;
             return;
         }
 
-        if (m_DraggedStack.isEmpty()) {
-            m_IsDragging = false;
+        if (m_DragContext->draggedStack.isEmpty()) {
+            m_DragContext->clear();
             return;
         }
 
-        if (clickedSlot->isEmpty()) {
-            clickedSlot->stack.item = m_DraggedStack.item;
+        if (clickedSlot->isEmpty())
+        {
+            clickedSlot->stack.item = m_DragContext->draggedStack.item;
             clickedSlot->stack.amount = 1;
-            m_DraggedStack.amount--;
 
-            if (m_DraggedStack.amount <= 0) {
-                m_DraggedStack.clear();
-                m_IsDragging = false;
-            }
+            m_DragContext->draggedStack.amount--;
+
+            if (m_DragContext->draggedStack.amount <= 0)
+                m_DragContext->clear();
+
             return;
         }
 
-        if (clickedSlot->stack.item == m_DraggedStack.item) {
+        if (clickedSlot->stack.item == m_DragContext->draggedStack.item)
+        {
             int maxStack = clickedSlot->stack.item->maxStackSize;
-            if (clickedSlot->stack.amount < maxStack) {
+
+            if (clickedSlot->stack.amount < maxStack)
+            {
                 clickedSlot->stack.amount++;
-                m_DraggedStack.amount--;
-                if (m_DraggedStack.amount <= 0) {
-                    m_DraggedStack.clear();
-                    m_IsDragging = false;
-                }
+                m_DragContext->draggedStack.amount--;
+
+                if (m_DragContext->draggedStack.amount <= 0)
+                    m_DragContext->clear();
             }
         }
     }
@@ -236,12 +255,12 @@ private:
         return mouseX >= rect.x && mouseY >= rect.y && mouseX <= rect.x + rect.w && mouseY <= rect.y + rect.h;
     }
 
+
 private:
     InventoryGrid* m_Inventory = nullptr;
 
     float m_SlotSize = 48.0f;
     float m_Spacing = 4.0f;
 
-    bool m_IsDragging = false;
-    ItemStack m_DraggedStack;
+    GUIDragContext* m_DragContext = nullptr;
 };
