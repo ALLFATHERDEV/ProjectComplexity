@@ -33,5 +33,8 @@ target_sources(ProjectComplexity PRIVATE
         component/CraftingMachineComponent.hpp
         systems/CraftingSystem.cpp
         systems/CraftingSystem.hpp
+        component/InteractionComponent.hpp
+        systems/InteractionSystem.cpp
+        systems/InteractionSystem.hpp
 
 )

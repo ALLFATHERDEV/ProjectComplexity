@@ -1,6 +1,8 @@
 #include "EntityFactory.hpp"
 
+#include "../Logger.hpp"
 #include "../entities/component/CraftingMachineComponent.hpp"
+#include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
 #include "../entities/component/MachineInventoryComponent.hpp"
 
@@ -39,6 +41,7 @@ Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite) {
 
     m_Positions.add(machine, { position });
     m_Sprites.add(machine, { sprite });
+    m_Collisions.add(machine, { SDL_FRect(0.0f, 0.0f, 16.0f, 16.0f), true, false });
 
     MachineInventoryComponent inventory;
     inventory.inputInventory.create(3, 1);
@@ -48,6 +51,11 @@ Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite) {
     CraftingMachineComponent crafting;
     crafting.currentRecipeName = "test_recipe";
     m_CraftingMachines.add(machine, crafting);
+
+    InteractionComponent interaction;
+    interaction.interactionName = "Crafting Machine";
+    interaction.interactionBounds = {-8.0f, -8.0f, 48.0f, 48.0f};
+    m_Interactions.add(machine, interaction);
 
     return machine;
 }

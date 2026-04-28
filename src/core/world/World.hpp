@@ -6,6 +6,7 @@
 #include "../entities/component/AnimatedSpriteComponent.hpp"
 #include "../entities/component/CollisionComponent.hpp"
 #include "../entities/component/CraftingMachineComponent.hpp"
+#include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
 #include "../entities/component/MachineInventoryComponent.hpp"
 #include "../entities/component/PositionComponent.hpp"
@@ -17,6 +18,7 @@
 #include "../entities/systems/CollisionSystem.hpp"
 #include "../entities/systems/CraftingSystem.hpp"
 #include "../entities/systems/InputSystem.hpp"
+#include "../entities/systems/InteractionSystem.hpp"
 #include "../entities/systems/MovementInputSystem.hpp"
 #include "../entities/systems/MovementSystem.hpp"
 #include "../entities/systems/RenderSystem.hpp"
@@ -72,6 +74,7 @@ private:
     ComponentStorage<InventoryComponent> m_Inventories;
     ComponentStorage<MachineInventoryComponent> m_MachineInventories;
     ComponentStorage<CraftingMachineComponent> m_CraftingMachines;
+    ComponentStorage<InteractionComponent> m_Interactions;
 
     AnimationLibrary m_AnimationLibrary;
 
@@ -87,6 +90,7 @@ private:
     AnimationStateSystem m_AnimationStateSystem;
     CollisionSystem m_CollisionSystem;
     CraftingSystem m_CraftingSystem;
+    InteractionSystem m_InteractionSystem;
 
 };
 

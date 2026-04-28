@@ -4,6 +4,8 @@
 
 #include "RenderSystem.hpp"
 
+#include "../../Logger.hpp"
+
 
 void RenderSystem::render(Renderer *renderer, const Camera2D& camera, ComponentStorage<PositionComponent> &positions, ComponentStorage<SpriteComponent> &sprites) {
     auto& spriteArray = sprites.getRaw();
@@ -18,8 +20,8 @@ void RenderSystem::render(Renderer *renderer, const Camera2D& camera, ComponentS
         auto& sprite = spriteArray[i].sprite;
 
         SDL_FRect destRect;
-        destRect.x = (pos->position.x * m_CellWidth) - camera.getX();
-        destRect.y = (pos->position.y * m_CellHeight) - camera.getY();
+        destRect.x = pos->position.x - camera.getX();
+        destRect.y = pos->position.y - camera.getY();
         destRect.w = sprite.srcRect.w;
         destRect.h = sprite.srcRect.h;
 

@@ -40,6 +40,8 @@ void World::render() {
 
 void World::handleInput(SDL_Event &event) {
     m_InputSystem.handleInput(event, m_Inputs, m_Velocities);
+
+    m_InteractionSystem.handleInput(event, m_Player, m_Positions, m_Interactions);
 }
 
 void World::setRenderer(Renderer *renderer) {
@@ -57,7 +59,7 @@ void World::initializeWorld() {
     m_ItemDatabase.loadItemsFromFolder("assets/items", m_ItemAtlas);
 
     LOG_INFO("Creating entities...");
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_Inventories, m_MachineInventories, m_CraftingMachines, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_Inventories, m_MachineInventories, m_CraftingMachines, m_Interactions, m_AnimationLibrary);
 
     m_Player = factory.createPlayer({ 100.0f, 100.0f });
 
@@ -80,7 +82,7 @@ void World::initializeWorld() {
     testRecipe.craftTime = 3.0f;
     m_RecipeDatabase.addRecipe(testRecipe);
 
-    m_Machine = factory.createCraftingMachine({ 100.0f, 200.0f }, m_TileMapAtlas.getSprite(15, 10));
+    m_Machine = factory.createCraftingMachine({ 100.0f, 100.0f }, m_TileMapAtlas.getSprite(0, 3));
 
     const ItemDefinition* iron = m_ItemDatabase.getItem("iron_ingot");
     auto* machineInventory = m_MachineInventories.get(m_Machine);

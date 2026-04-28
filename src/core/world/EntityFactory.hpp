@@ -6,6 +6,7 @@
 #include "../entities/component/CharacterStateComponent.hpp"
 #include "../entities/component/CollisionComponent.hpp"
 #include "../entities/component/InputComponent.hpp"
+#include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
 #include "../entities/component/PositionComponent.hpp"
 #include "../entities/component/SpriteComponent.hpp"
@@ -26,6 +27,7 @@ public:
                     ComponentStorage<InventoryComponent>& inventories,
                     ComponentStorage<MachineInventoryComponent>& machineInventories,
                     ComponentStorage<CraftingMachineComponent>& craftingMachines,
+                    ComponentStorage<InteractionComponent>& interactions,
                     AnimationLibrary& animationLibrary) :
     m_EntityManager(entityManager),
     m_Positions(positions),
@@ -38,6 +40,7 @@ public:
     m_Inventories(inventories),
     m_MachineInventories(machineInventories),
     m_CraftingMachines(craftingMachines),
+    m_Interactions(interactions),
     m_AnimationLibrary(animationLibrary) {}
 
     Entity createPlayer(Vec2f position);
@@ -56,5 +59,6 @@ private:
     ComponentStorage<InventoryComponent>& m_Inventories;
     ComponentStorage<MachineInventoryComponent>& m_MachineInventories;
     ComponentStorage<CraftingMachineComponent>& m_CraftingMachines;
+    ComponentStorage<InteractionComponent>& m_Interactions;
     AnimationLibrary& m_AnimationLibrary;
 };
