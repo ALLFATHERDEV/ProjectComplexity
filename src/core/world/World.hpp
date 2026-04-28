@@ -1,0 +1,85 @@
+#ifndef PROJECTCOMPLEXITY_WORLD_H
+#define PROJECTCOMPLEXITY_WORLD_H
+#include "AnimationLibrary.hpp"
+#include "../entities/ComponentStorage.hpp"
+#include "../entities/EntityManager.hpp"
+#include "../entities/component/AnimatedSpriteComponent.hpp"
+#include "../entities/component/CollisionComponent.hpp"
+#include "../entities/component/InventoryComponent.hpp"
+#include "../entities/component/PositionComponent.hpp"
+#include "../entities/component/SpriteComponent.hpp"
+#include "../entities/systems/AnimatedRenderSystem.hpp"
+#include "../entities/systems/AnimationStateSystem.hpp"
+#include "../entities/systems/AnimationSystem.hpp"
+#include "../entities/systems/CharacterStateSystem.hpp"
+#include "../entities/systems/CollisionSystem.hpp"
+#include "../entities/systems/InputSystem.hpp"
+#include "../entities/systems/MovementInputSystem.hpp"
+#include "../entities/systems/MovementSystem.hpp"
+#include "../entities/systems/RenderSystem.hpp"
+#include "../graphics/Renderer.hpp"
+#include "../graphics/SpriteAtlas.hpp"
+#include "../inventory/ItemDatabase.hpp"
+#include "../map/TileMap.hpp"
+
+struct InputComponent;
+struct VelocityComponent;
+
+class World {
+public:
+    World();
+    ~World();
+
+    void setRenderer(Renderer* renderer);
+    void initializeWorld();
+    void update(float deltaTime);
+    void render();
+    void handleInput(SDL_Event& event);
+
+    Camera2D& getCamera() { return m_Camera; }
+    TileMap& getTileMap() { return m_TileMap; }
+    SpriteAtlas& getTileMapAtlas() { return m_TileMapAtlas; }
+    ComponentStorage<InventoryComponent>& getInventories() { return m_Inventories; }
+    Entity getPlayer() { return m_Player; }
+
+private:
+
+    Camera2D m_Camera;
+    Entity m_Player;
+
+    Renderer* m_Renderer = nullptr;
+    TileMap m_TileMap;
+    SpriteAtlas m_TileMapAtlas;
+
+    ItemDatabase m_ItemDatabase;
+    SpriteAtlas m_ItemAtlas;
+
+    EntityManager m_EntityManager;
+
+    ComponentStorage<PositionComponent> m_Positions;
+    ComponentStorage<SpriteComponent> m_Sprites;
+    ComponentStorage<AnimatedSpriteComponent> m_AnimatedSprites;
+    ComponentStorage<VelocityComponent> m_Velocities;
+    ComponentStorage<InputComponent> m_Inputs;
+    ComponentStorage<CharacterStateComponent> m_CharacterStates;
+    ComponentStorage<AnimationControllerComponent> m_AnimationControllers;
+    ComponentStorage<CollisionComponent> m_Collisions;
+    ComponentStorage<InventoryComponent> m_Inventories;
+
+    AnimationLibrary m_AnimationLibrary;
+
+    AnimatedSprite m_AnimSpr;
+    AnimatedSpriteComponent m_Comp;
+    RenderSystem m_RenderSystem;
+    AnimationSystem m_AnimationSystem;
+    AnimatedRenderSystem m_AnimatedRenderSystem;
+    MovementSystem m_MovementSystem;
+    InputSystem m_InputSystem;
+    MovementInputSystem m_MovementInputSystem;
+    CharacterStateSystem m_CharacterStateSystem;
+    AnimationStateSystem m_AnimationStateSystem;
+    CollisionSystem m_CollisionSystem;
+
+};
+
+#endif //PROJECTCOMPLEXITY_WORLD_H

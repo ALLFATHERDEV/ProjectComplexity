@@ -1,0 +1,8 @@
+{
+  "uniqueName": "green_gem",
+  "id": 3,
+  "displayName": "Green Gem",
+  "maxStackSize": 32,
+  "iconAtlasX": 6,
+  "iconAtlasY": 10
+}

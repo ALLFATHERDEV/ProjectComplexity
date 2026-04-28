@@ -1,0 +1,8 @@
+{
+  "uniqueName": "iron_ingot",
+  "id": 1,
+  "displayName": "Iron Ingot",
+  "maxStackSize": 64,
+  "iconAtlasX": 9,
+  "iconAtlasY": 12
+}
