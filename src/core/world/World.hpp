@@ -5,7 +5,9 @@
 #include "../entities/EntityManager.hpp"
 #include "../entities/component/AnimatedSpriteComponent.hpp"
 #include "../entities/component/CollisionComponent.hpp"
+#include "../entities/component/CraftingMachineComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
+#include "../entities/component/MachineInventoryComponent.hpp"
 #include "../entities/component/PositionComponent.hpp"
 #include "../entities/component/SpriteComponent.hpp"
 #include "../entities/systems/AnimatedRenderSystem.hpp"
@@ -13,6 +15,7 @@
 #include "../entities/systems/AnimationSystem.hpp"
 #include "../entities/systems/CharacterStateSystem.hpp"
 #include "../entities/systems/CollisionSystem.hpp"
+#include "../entities/systems/CraftingSystem.hpp"
 #include "../entities/systems/InputSystem.hpp"
 #include "../entities/systems/MovementInputSystem.hpp"
 #include "../entities/systems/MovementSystem.hpp"
@@ -46,6 +49,7 @@ private:
 
     Camera2D m_Camera;
     Entity m_Player;
+    Entity m_Machine;
 
     Renderer* m_Renderer = nullptr;
     TileMap m_TileMap;
@@ -55,6 +59,7 @@ private:
     SpriteAtlas m_ItemAtlas;
 
     EntityManager m_EntityManager;
+    RecipeDatabase m_RecipeDatabase;
 
     ComponentStorage<PositionComponent> m_Positions;
     ComponentStorage<SpriteComponent> m_Sprites;
@@ -65,6 +70,8 @@ private:
     ComponentStorage<AnimationControllerComponent> m_AnimationControllers;
     ComponentStorage<CollisionComponent> m_Collisions;
     ComponentStorage<InventoryComponent> m_Inventories;
+    ComponentStorage<MachineInventoryComponent> m_MachineInventories;
+    ComponentStorage<CraftingMachineComponent> m_CraftingMachines;
 
     AnimationLibrary m_AnimationLibrary;
 
@@ -79,6 +86,7 @@ private:
     CharacterStateSystem m_CharacterStateSystem;
     AnimationStateSystem m_AnimationStateSystem;
     CollisionSystem m_CollisionSystem;
+    CraftingSystem m_CraftingSystem;
 
 };
 

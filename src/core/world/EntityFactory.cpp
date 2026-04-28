@@ -1,6 +1,8 @@
 #include "EntityFactory.hpp"
 
+#include "../entities/component/CraftingMachineComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
+#include "../entities/component/MachineInventoryComponent.hpp"
 
 Entity EntityFactory::createPlayer(Vec2f position) {
     Entity player = m_EntityManager.createEntity();
@@ -30,4 +32,22 @@ Entity EntityFactory::createPlayer(Vec2f position) {
     m_Inventories.add(player, inventory);
 
     return player;
+}
+
+Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite) {
+    Entity machine = m_EntityManager.createEntity();
+
+    m_Positions.add(machine, { position });
+    m_Sprites.add(machine, { sprite });
+
+    MachineInventoryComponent inventory;
+    inventory.inputInventory.create(3, 1);
+    inventory.outputInventory.create(1, 1);
+    m_MachineInventories.add(machine, inventory);
+
+    CraftingMachineComponent crafting;
+    crafting.currentRecipeName = "test_recipe";
+    m_CraftingMachines.add(machine, crafting);
+
+    return machine;
 }

@@ -28,4 +28,10 @@ target_sources(ProjectComplexity PRIVATE
         component/CollisionComponent.hpp
         systems/CollisionSystem.cpp
         systems/CollisionSystem.hpp
-        component/InventoryComponent.hpp)
+        component/InventoryComponent.hpp
+        component/MachineInventoryComponent.hpp
+        component/CraftingMachineComponent.hpp
+        systems/CraftingSystem.cpp
+        systems/CraftingSystem.hpp
+
+)

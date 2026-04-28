@@ -22,6 +22,7 @@ void World::update(float deltaTime) {
     m_AnimationStateSystem.update(m_CharacterStates, m_AnimationControllers);
     m_AnimationSystem.update(deltaTime, m_AnimationControllers);
     // m_MovementSystem.update(deltaTime, m_Positions, m_Velocities);
+    m_CraftingSystem.update(deltaTime, m_CraftingMachines, m_MachineInventories, m_RecipeDatabase, m_ItemDatabase);
 
     auto* playerPos = m_Positions.get(m_Player);
     if (playerPos) {
@@ -56,7 +57,7 @@ void World::initializeWorld() {
     m_ItemDatabase.loadItemsFromFolder("assets/items", m_ItemAtlas);
 
     LOG_INFO("Creating entities...");
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_Inventories, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_Inventories, m_MachineInventories, m_CraftingMachines, m_AnimationLibrary);
 
     m_Player = factory.createPlayer({ 100.0f, 100.0f });
 
@@ -70,6 +71,22 @@ void World::initializeWorld() {
     LOG_INFO("Creating map...");
     m_TileMapAtlas.createAtlas(m_Renderer, 16, 16, "assets/Overworld_Tileset.png");
     TileMapSerializer::load(m_TileMap, m_TileMapAtlas, "maps/test.map");
+
+    RecipeDefinition testRecipe;
+    testRecipe.uniqueName = "test_recipe";
+    testRecipe.inputs.push_back({ "iron_ingot", 2 });
+    testRecipe.outputItemName = "copper_ingot";
+    testRecipe.outputAmount = 4;
+    testRecipe.craftTime = 3.0f;
+    m_RecipeDatabase.addRecipe(testRecipe);
+
+    m_Machine = factory.createCraftingMachine({ 100.0f, 200.0f }, m_TileMapAtlas.getSprite(15, 10));
+
+    const ItemDefinition* iron = m_ItemDatabase.getItem("iron_ingot");
+    auto* machineInventory = m_MachineInventories.get(m_Machine);
+    if (iron && machineInventory) {
+        machineInventory->inputInventory.addItem(iron, 3);
+    }
 
     LOG_INFO("World initialized");
 }

@@ -11,6 +11,9 @@
 #include "../entities/component/SpriteComponent.hpp"
 #include "../entities/component/VelocityComponent.hpp"
 
+struct CraftingMachineComponent;
+struct MachineInventoryComponent;
+
 class EntityFactory {
 public:
     EntityFactory(EntityManager& entityManager, ComponentStorage<PositionComponent>& positions,
@@ -21,6 +24,8 @@ public:
                     ComponentStorage<SpriteComponent>& sprites,
                     ComponentStorage<CollisionComponent>& collisions,
                     ComponentStorage<InventoryComponent>& inventories,
+                    ComponentStorage<MachineInventoryComponent>& machineInventories,
+                    ComponentStorage<CraftingMachineComponent>& craftingMachines,
                     AnimationLibrary& animationLibrary) :
     m_EntityManager(entityManager),
     m_Positions(positions),
@@ -31,9 +36,12 @@ public:
     m_Sprites(sprites),
     m_Collisions(collisions),
     m_Inventories(inventories),
+    m_MachineInventories(machineInventories),
+    m_CraftingMachines(craftingMachines),
     m_AnimationLibrary(animationLibrary) {}
 
     Entity createPlayer(Vec2f position);
+    Entity createCraftingMachine(Vec2f position, Sprite sprite);
 
 private:
     EntityManager& m_EntityManager;
@@ -46,5 +54,7 @@ private:
     ComponentStorage<SpriteComponent>& m_Sprites;
     ComponentStorage<CollisionComponent>& m_Collisions;
     ComponentStorage<InventoryComponent>& m_Inventories;
+    ComponentStorage<MachineInventoryComponent>& m_MachineInventories;
+    ComponentStorage<CraftingMachineComponent>& m_CraftingMachines;
     AnimationLibrary& m_AnimationLibrary;
 };

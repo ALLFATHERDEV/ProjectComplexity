@@ -1,0 +1,5 @@
+target_sources(ProjectComplexity PRIVATE
+        RecipeIngredient.hpp
+        RecipeDefinition.hpp
+        RecipeDatabase.hpp
+)
