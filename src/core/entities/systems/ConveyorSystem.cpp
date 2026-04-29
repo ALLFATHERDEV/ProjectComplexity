@@ -222,7 +222,7 @@ void ConveyorSystem::update(float deltaTime,
             };
 
             positions.add(itemEntity, itemPosition);
-            sprites.add(itemEntity, { beltItem.item->icon, 1, 24.0f, 24.0f });
+            sprites.add(itemEntity, { beltItem.item->icon, 1, 24.0f, 24.0f, true });
             beltItems.add(itemEntity, beltItem);
             machineInventory->outputInventory.removeItem(beltItem.item, 1);
             break;

@@ -28,10 +28,12 @@ void RenderSystem::render(Renderer *renderer, const Camera2D& camera, const Chun
         const float renderWidth = spriteArray[index].renderWidth > 0.0f ? spriteArray[index].renderWidth : sprite.srcRect.w;
         const float renderHeight = spriteArray[index].renderHeight > 0.0f ? spriteArray[index].renderHeight : sprite.srcRect.h;
         const float zoom = camera.getZoom();
+        const float offsetX = spriteArray[index].centerInSourceRect ? (sprite.srcRect.w - renderWidth) * 0.5f : 0.0f;
+        const float offsetY = spriteArray[index].centerInSourceRect ? (sprite.srcRect.h - renderHeight) * 0.5f : 0.0f;
 
         SDL_FRect destRect;
-        destRect.x = (pos->position.x - camera.getX() + (sprite.srcRect.w - renderWidth) * 0.5f) * zoom;
-        destRect.y = (pos->position.y - camera.getY() + (sprite.srcRect.h - renderHeight) * 0.5f) * zoom;
+        destRect.x = (pos->position.x - camera.getX() + offsetX) * zoom;
+        destRect.y = (pos->position.y - camera.getY() + offsetY) * zoom;
         destRect.w = renderWidth * zoom;
         destRect.h = renderHeight * zoom;
 

@@ -6,4 +6,5 @@ struct SpriteComponent {
     int sortOrder = 0;
     float renderWidth = 0.0f;
     float renderHeight = 0.0f;
+    bool centerInSourceRect = false;
 };

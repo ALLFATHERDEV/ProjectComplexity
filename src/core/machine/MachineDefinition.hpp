@@ -7,9 +7,13 @@ struct MachineDefinition {
     std::string uniqueName;
     std::string displayName;
     std::vector<std::string> availableRecipes;
+    std::vector<std::string> allowedPlacementTags;
+    int spriteAtlasX = 0;
+    int spriteAtlasY = 0;
+    int widthTiles = 1;
+    int heightTiles = 1;
 
-    int inputWidth = 1;
-    int inputHeight = 1;
-    int outputWidth = 1;
-    int outputHeight = 1;
+    bool requiresFuel = true;
+    int fuelWidth = 1;
+    int fuelHeight = 1;
 };

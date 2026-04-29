@@ -1,4 +1,5 @@
 #include "CraftingSystem.hpp"
+#include <algorithm>
 
 void CraftingSystem::update(float deltaTime, ComponentStorage<CraftingMachineComponent> &machines, ComponentStorage<MachineInventoryComponent> &inventories, const RecipeDatabase &recipeDatabase, const ItemDatabase &itemDatabase) {
     auto& machineArray = machines.getRaw();
@@ -12,9 +13,25 @@ void CraftingSystem::update(float deltaTime, ComponentStorage<CraftingMachineCom
         CraftingMachineComponent& machine = machineArray[i];
         const RecipeDefinition* recipe = recipeDatabase.getRecipe(machine.currentRecipeName);
         if (!recipe) continue;
+        if (!syncRecipeInventoryLayout(*machineInventory, *recipe)) continue;
 
         processMachine(deltaTime, machine, *machineInventory, *recipe, itemDatabase);
     }
+}
+
+bool CraftingSystem::syncRecipeInventoryLayout(MachineInventoryComponent& inventory, const RecipeDefinition& recipe) {
+    const int inputSlots = std::max(1, static_cast<int>(recipe.inputs.size()));
+    const int outputSlots = recipe.outputItemName.empty() ? 0 : 1;
+
+    if (!inventory.inputInventory.resizePreserve(inputSlots, 1)) {
+        return false;
+    }
+
+    if (!inventory.outputInventory.resizePreserve(outputSlots, outputSlots > 0 ? 1 : 0)) {
+        return false;
+    }
+
+    return true;
 }
 
 void CraftingSystem::processMachine(float deltaTime, CraftingMachineComponent &machine, MachineInventoryComponent &inventory, const RecipeDefinition &recipe, const ItemDatabase &itemDatabase) {
@@ -32,7 +49,20 @@ void CraftingSystem::processMachine(float deltaTime, CraftingMachineComponent &m
         return;
     }
 
+    if (machine.requiresFuel && machine.fuelRemaining <= 0.0f) {
+        if (!tryConsumeFuel(machine, inventory)) {
+            machine.isCrafting = false;
+            return;
+        }
+    }
+
     machine.isCrafting = true;
+    if (machine.requiresFuel) {
+        machine.fuelRemaining -= deltaTime;
+        if (machine.fuelRemaining < 0.0f) {
+            machine.fuelRemaining = 0.0f;
+        }
+    }
     machine.progress += deltaTime;
 
     if (machine.progress >= recipe.craftTime) {
@@ -68,6 +98,10 @@ void CraftingSystem::consumeIngredient(MachineInventoryComponent &inventory, con
 
 bool CraftingSystem::canOutputFit(MachineInventoryComponent &inventory, const ItemDefinition *outputItem, int amount) {
     InventoryGrid& output = inventory.outputInventory;
+    if (output.getWidth() <= 0 || output.getHeight() <= 0) {
+        return false;
+    }
+
     int remaining = amount;
 
     for (const auto& slot : output.getSlots()) {
@@ -79,5 +113,24 @@ bool CraftingSystem::canOutputFit(MachineInventoryComponent &inventory, const It
         if (remaining <= 0)
             return true;
     }
+    return false;
+}
+
+bool CraftingSystem::tryConsumeFuel(CraftingMachineComponent& machine, MachineInventoryComponent& inventory) {
+    for (auto& slot : inventory.fuelInventory.getSlots()) {
+        if (slot.isEmpty() || !slot.stack.item || slot.stack.item->fuelValue <= 0.0f) {
+            continue;
+        }
+
+        const ItemDefinition* fuelItem = slot.stack.item;
+        if (!inventory.fuelInventory.removeItem(fuelItem, 1)) {
+            continue;
+        }
+
+        machine.currentFuelCapacity = fuelItem->fuelValue;
+        machine.fuelRemaining = fuelItem->fuelValue;
+        return true;
+    }
+
     return false;
 }

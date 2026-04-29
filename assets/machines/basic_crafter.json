@@ -5,8 +5,14 @@
     "test_recipe",
     "test_recipe2"
   ],
-  "inputWidth": 3,
-  "inputHeight": 1,
-  "outputWidth": 1,
-  "outputHeight": 1
+  "spriteAtlasX": 0,
+  "spriteAtlasY": 3,
+  "widthTiles": 1,
+  "heightTiles": 1,
+  "requiresFuel": true,
+  "fuelWidth": 1,
+  "fuelHeight": 1,
+  "allowedPlacementTags": [
+    "ore_iron"
+  ]
 }

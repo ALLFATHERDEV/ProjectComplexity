@@ -12,13 +12,16 @@ public:
     void setCellSize(int cellWidth, int cellHeight);
     void addLayer(const TileMapLayer &layer);
     void render(Renderer* renderer, const Camera2D& camera, const ChunkManager& chunkManager);
-    void setTile(int x, int y, const Sprite &sprite, int layer, int atlasX, int atlasY, bool isBlocking = false);
+    void setTile(int x, int y, const Sprite &sprite, int layer, const std::string& paletteName, int atlasX, int atlasY, bool isBlocking = false);
+    bool canPlaceTileObject(int x, int y, int layer, int widthTiles, int heightTiles) const;
+    bool setTileObject(int x, int y, const Sprite& sprite, int layer, int widthTiles, int heightTiles, bool isBlocking, const std::string& itemName);
     void clearTile(int x, int y, int layer);
     bool isTileBlocking(int x, int y, int layer) const;
     bool isWorldPositionBlocking(float worldX, float worldY) const;
     bool isRectColliding(const SDL_FRect& rect) const;
     void clear();
-    std::vector<TileMapLayer> getLayers() const { return m_Layers; }
+    const Tile* getTile(int x, int y, int layer) const;
+    const std::vector<TileMapLayer>& getLayers() const { return m_Layers; }
 
 private:
     std::vector<TileMapLayer> m_Layers;

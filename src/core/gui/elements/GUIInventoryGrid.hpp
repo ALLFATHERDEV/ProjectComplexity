@@ -1,10 +1,14 @@
 #pragma once
+#include <functional>
+
 #include "../GUIDragContext.hpp"
 #include "../GUIElement.hpp"
 #include "../../inventory/InventoryGrid.hpp"
 
 class GUIInventoryGrid : public GUIElement {
 public:
+    using AcceptStackFn = std::function<bool(const ItemStack&)>;
+
     void setInventory(InventoryGrid* inventory) {
         m_Inventory = inventory;
     }
@@ -68,7 +72,7 @@ public:
 
                 drawStack(renderer, slot->stack, slotRect);
 
-                if (isSlotHovered(slotRect) && !slot->isEmpty() && !m_DragContext) {
+                if (isSlotHovered(slotRect) && !slot->isEmpty() && !m_DragContext->isDragging) {
                     hoveredStack = slot->stack;
                     hasHoveredStack = true;
                 }
@@ -85,7 +89,18 @@ public:
         m_DragContext = dragContext;
     }
 
+    void setAcceptStackFn(AcceptStackFn acceptStackFn) {
+        m_AcceptStackFn = std::move(acceptStackFn);
+    }
+
 private:
+    bool canAcceptDraggedStack() const {
+        if (!m_AcceptStackFn) {
+            return true;
+        }
+
+        return m_AcceptStackFn(m_DragContext->draggedStack);
+    }
 
     void renderTooltip(Renderer* renderer, const ItemStack& stack) {
         if (stack.isEmpty() || !stack.item)
@@ -103,12 +118,12 @@ private:
 
     bool containsGridPoint(float mouseX, float mouseY) {
         float gridWidth =
-            m_Inventory->getWidth() * m_SlotSize +
-            (m_Inventory->getWidth() - 1) * m_Spacing;
+            static_cast<float>(m_Inventory->getWidth()) * m_SlotSize +
+            (static_cast<float>(m_Inventory->getWidth()) - 1) * m_Spacing;
 
         float gridHeight =
-            m_Inventory->getHeight() * m_SlotSize +
-            (m_Inventory->getHeight() - 1) * m_Spacing;
+            static_cast<float>(m_Inventory->getHeight()) * m_SlotSize +
+            (static_cast<float>(m_Inventory->getHeight()) - 1) * m_Spacing;
 
         return mouseX >= m_Position.x &&
                mouseY >= m_Position.y &&
@@ -161,8 +176,12 @@ private:
             m_DragContext->draggedStack = clickedSlot->stack;
             clickedSlot->stack.clear();
             m_DragContext->isDragging = true;
+            m_DragContext->suppressWorldPlacementUntilMouseRelease = true;
             return;
         }
+
+        if (!canAcceptDraggedStack())
+            return;
 
         if (clickedSlot->isEmpty()) {
             clickedSlot->stack = m_DragContext->draggedStack;
@@ -212,6 +231,7 @@ private:
                 clickedSlot->stack.clear();
 
             m_DragContext->isDragging = true;
+            m_DragContext->suppressWorldPlacementUntilMouseRelease = true;
             return;
         }
 
@@ -219,6 +239,9 @@ private:
             m_DragContext->clear();
             return;
         }
+
+        if (!canAcceptDraggedStack())
+            return;
 
         if (clickedSlot->isEmpty())
         {
@@ -263,4 +286,5 @@ private:
     float m_Spacing = 4.0f;
 
     GUIDragContext* m_DragContext = nullptr;
+    AcceptStackFn m_AcceptStackFn;
 };

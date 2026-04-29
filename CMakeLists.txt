@@ -53,6 +53,8 @@ FetchContent_MakeAvailable(json)
 # ProjectComplexity executable
 add_executable(ProjectComplexity ${SOURCE_FILES})
 add_subdirectory(src/core)
+add_custom_command(TARGET ProjectComplexity POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory  "${CMAKE_SOURCE_DIR}/assets"
+        "$<TARGET_FILE_DIR:ProjectComplexity>/assets")
 
 target_include_directories(imgui PUBLIC libs/ImGui libs/ImGui/backends)
 
@@ -62,4 +64,11 @@ target_link_libraries(ProjectComplexity PUBLIC SDL3_image::SDL3_image)
 target_link_libraries(ProjectComplexity PUBLIC SDL3_ttf::SDL3_ttf)
 target_link_libraries(ProjectComplexity PUBLIC fmt::fmt)
 target_link_libraries(ProjectComplexity PUBLIC imgui)
-target_link_libraries(ProjectComplexity PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(ProjectComplexity PUBLIC nlohmann_json::nlohmann_json)
+
+add_custom_command(TARGET ProjectComplexity POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_RUNTIME_DLLS:ProjectComplexity>
+        $<TARGET_FILE_DIR:ProjectComplexity>
+        COMMAND_EXPAND_LISTS
+)

@@ -16,9 +16,25 @@ void TileMap::render(Renderer *renderer, const Camera2D& camera, const ChunkMana
         layer.render(renderer, camera, chunkManager);
 }
 
-void TileMap::setTile(int x, int y, const Sprite &sprite, int layer, int atlasX, int atlasY, bool isBlocking) {
+void TileMap::setTile(int x, int y, const Sprite &sprite, int layer, const std::string& paletteName, int atlasX, int atlasY, bool isBlocking) {
     TileMapLayer & mapLayer = m_Layers[layer];
-    mapLayer.setTile(x, y, sprite, atlasX, atlasY, isBlocking);
+    mapLayer.setTile(x, y, sprite, paletteName, atlasX, atlasY, isBlocking);
+}
+
+bool TileMap::canPlaceTileObject(int x, int y, int layer, int widthTiles, int heightTiles) const {
+    if (layer < 0 || layer >= static_cast<int>(m_Layers.size())) {
+        return false;
+    }
+
+    return m_Layers[layer].canPlaceTileObject(x, y, widthTiles, heightTiles);
+}
+
+bool TileMap::setTileObject(int x, int y, const Sprite& sprite, int layer, int widthTiles, int heightTiles, bool isBlocking, const std::string& itemName) {
+    if (layer < 0 || layer >= static_cast<int>(m_Layers.size())) {
+        return false;
+    }
+
+    return m_Layers[layer].setTileObject(x, y, sprite, widthTiles, heightTiles, isBlocking, itemName);
 }
 
 void TileMap::clearTile(int x, int y, int layer) {
@@ -51,6 +67,14 @@ bool TileMap::isRectColliding(const SDL_FRect &rect) const {
             return true;
     }
     return false;
+}
+
+const Tile* TileMap::getTile(int x, int y, int layer) const {
+    if (layer < 0 || layer >= static_cast<int>(m_Layers.size())) {
+        return nullptr;
+    }
+
+    return m_Layers[layer].getTile(x, y);
 }
 
 void TileMap::clear() {

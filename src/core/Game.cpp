@@ -36,6 +36,10 @@ Game::Game(){
 
     m_World.setRenderer(&m_Renderer);
     m_World.initializeWorld();
+    m_TileMapEditor.clearTilePalettes();
+    for (const auto& palette : m_World.getTilePalettes()) {
+        m_TileMapEditor.addTilePalette(palette.name, palette.atlas);
+    }
 
     m_MachineGUI.create(m_GUISystem, &m_GUIDragContext);
     m_MachineGUI.bind(&m_World.getMachineInventories(),
@@ -71,7 +75,7 @@ void Game::run() {
         Uint64 currentTicks = SDL_GetTicks();
         Uint64 deltaTimeMs = currentTicks - previousTicks;
         previousTicks = currentTicks;
-        float deltaTime = deltaTimeMs / 1000.0f;
+        float deltaTime = static_cast<float>(deltaTimeMs) / 1000.0f;
 
         events();
         m_World.update(deltaTime);
@@ -98,8 +102,12 @@ void Game::events() {
             m_World.getCamera().addZoom(event.wheel.y * 0.1f);
         }
 
+        if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) {
+            m_GUIDragContext.suppressWorldPlacementUntilMouseRelease = false;
+        }
+
         ImGuiIO& io = ImGui::GetIO();
-        if (!io.WantCaptureMouse) {
+        if (!io.WantCaptureMouse && !isDraggingPlaceableItem()) {
             m_TileMapEditor.update(event, m_World, m_World.getCamera());
         }
 
@@ -107,6 +115,10 @@ void Game::events() {
             m_MachineGUI.togglePlayerInventory();
         }
         m_GUISystem.handleEvent(event);
+
+        if (!io.WantCaptureMouse) {
+            tryPlaceDraggedItem(event);
+        }
 
         if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE) {
             if (m_MachineGUI.isOpen() || m_MachineGUI.isPlayerInventoryOpen()) {
@@ -137,14 +149,119 @@ void Game::render() {
 
     SDL_RenderClear(m_Renderer.getSDLRenderer());
     m_World.render();
+    renderDraggedPlaceablePreview();
     m_GUISystem.render(&m_Renderer);
 
     m_TileMapEditor.renderImGui(m_World);
+    renderDebugOverlay();
 
     ImGui::Render();
 
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), m_Renderer.getSDLRenderer());
 
     SDL_RenderPresent(m_Renderer.getSDLRenderer());
+}
+
+bool Game::isDraggingPlaceableItem() const {
+    if (!m_GUIDragContext.isDragging || m_GUIDragContext.draggedStack.isEmpty() || !m_GUIDragContext.draggedStack.item) {
+        return false;
+    }
+
+    return m_GUIDragContext.draggedStack.item->isPlaceable;
+}
+
+bool Game::tryPlaceDraggedItem(const SDL_Event& event) {
+    if (event.type != SDL_EVENT_MOUSE_BUTTON_DOWN || event.button.button != SDL_BUTTON_LEFT) {
+        return false;
+    }
+
+    if (!isDraggingPlaceableItem()) {
+        return false;
+    }
+
+    if (m_GUIDragContext.suppressWorldPlacementUntilMouseRelease) {
+        return false;
+    }
+
+    const ItemDefinition* item = m_GUIDragContext.draggedStack.item;
+    if (!item) {
+        return false;
+    }
+
+    float mouseX = 0.0f;
+    float mouseY = 0.0f;
+    SDL_GetMouseState(&mouseX, &mouseY);
+
+    const Camera2D& camera = m_World.getCamera();
+    const float worldX = mouseX / camera.getZoom() + camera.getX();
+    const float worldY = mouseY / camera.getZoom() + camera.getY();
+    const int tileX = static_cast<int>(worldX) / 32;
+    const int tileY = static_cast<int>(worldY) / 32;
+
+    if (!m_World.placeItem(*item, tileX, tileY)) {
+        return false;
+    }
+
+    m_GUIDragContext.draggedStack.amount--;
+    if (m_GUIDragContext.draggedStack.amount <= 0) {
+        m_GUIDragContext.clear();
+    }
+
+    return true;
+}
+
+void Game::renderDraggedPlaceablePreview() {
+    if (!isDraggingPlaceableItem()) {
+        return;
+    }
+
+    const ItemDefinition* item = m_GUIDragContext.draggedStack.item;
+    if (!item) {
+        return;
+    }
+
+    float mouseX = 0.0f;
+    float mouseY = 0.0f;
+    SDL_GetMouseState(&mouseX, &mouseY);
+
+    const Camera2D& camera = m_World.getCamera();
+    const float worldX = mouseX / camera.getZoom() + camera.getX();
+    const float worldY = mouseY / camera.getZoom() + camera.getY();
+    const int tileX = static_cast<int>(worldX) / 32;
+    const int tileY = static_cast<int>(worldY) / 32;
+
+    m_World.renderPlacementPreview(*item, tileX, tileY);
+}
+
+void Game::renderDebugOverlay() {
+    const Vec2f playerPosition = m_World.getPlayerPosition();
+    const int tileX = static_cast<int>(playerPosition.x) / 32;
+    const int tileY = static_cast<int>(playerPosition.y) / 32;
+    const ChunkManager& chunkManager = m_World.getChunkManager();
+    const int chunkX = chunkManager.getCenterChunkX();
+    const int chunkY = chunkManager.getCenterChunkY();
+    const float zoom = m_World.getCamera().getZoom();
+
+    constexpr ImGuiWindowFlags windowFlags =
+        ImGuiWindowFlags_NoDecoration |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoFocusOnAppearing |
+        ImGuiWindowFlags_NoNav;
+
+    ImGui::SetNextWindowBgAlpha(0.75f);
+    ImGui::SetNextWindowPos(
+        ImVec2(static_cast<float>(WINDOW_WIDTH) - 16.0f, static_cast<float>(WINDOW_HEIGHT) - 16.0f),
+        ImGuiCond_Always,
+        ImVec2(1.0f, 1.0f)
+    );
+
+    if (ImGui::Begin("DebugOverlay", nullptr, windowFlags)) {
+        ImGui::Text("Grid: %d, %d", tileX, tileY);
+        ImGui::Text("Chunk: %d, %d", chunkX, chunkY);
+        ImGui::Text("Zoom: %.2f", zoom);
+    }
+    ImGui::End();
 }
 

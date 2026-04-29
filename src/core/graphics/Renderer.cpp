@@ -68,6 +68,13 @@ void Renderer::drawSprite(const Sprite &sprite, SDL_FRect& destRect) const {
     SDL_RenderTexture(m_Renderer, sprite.texture, &sprite.srcRect, &destRect);
 }
 
+void Renderer::drawSpriteAlpha(const Sprite& sprite, SDL_FRect& destRect, Uint8 alpha) const {
+    SDL_SetTextureScaleMode(sprite.texture, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureAlphaMod(sprite.texture, alpha);
+    SDL_RenderTexture(m_Renderer, sprite.texture, &sprite.srcRect, &destRect);
+    SDL_SetTextureAlphaMod(sprite.texture, 255);
+}
+
 void Renderer::drawFilledRect(const SDL_FRect &rect, SDL_Color color) const {
     SDL_SetRenderDrawColor(m_Renderer, color.r, color.g, color.b, color.a);
     SDL_RenderFillRect(m_Renderer, &rect);

@@ -1,0 +1,14 @@
+{
+  "uniqueName": "placeable_test",
+  "id": 4,
+  "displayName": "Placeable Test",
+  "maxStackSize": 16,
+  "iconAtlasX": 9,
+  "iconAtlasY": 50,
+  "isPlaceable": true,
+  "placeableTexturePath": "assets/Sprite-0002.png",
+  "placeableWidthTiles": 2,
+  "placeableHeightTiles": 2,
+  "placeableBlocking": true,
+  "placeableLayer": 1
+}
