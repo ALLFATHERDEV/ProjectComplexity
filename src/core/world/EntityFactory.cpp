@@ -55,18 +55,23 @@ Entity EntityFactory::createPlayer(Vec2f position) {
 
 Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite, const MachineDefinition& machineDefinition) {
     Entity machine = m_EntityManager.createEntity();
+    const float width = static_cast<float>(machineDefinition.widthTiles * 32);
+    const float height = static_cast<float>(machineDefinition.heightTiles * 32);
 
     m_Positions.add(machine, { position });
-    m_Sprites.add(machine, { sprite });
-    m_Collisions.add(machine, { SDL_FRect(0.0f, 0.0f, 16.0f, 16.0f), true, false });
+    m_Sprites.add(machine, { sprite, 0, width, height });
+    m_Collisions.add(machine, { SDL_FRect(0.0f, 0.0f, width, height), true, false });
 
     MachineInventoryComponent inventory;
-    inventory.inputInventory.create(machineDefinition.inputWidth, machineDefinition.inputHeight);
-    inventory.outputInventory.create(machineDefinition.outputWidth, machineDefinition.outputHeight);
+    inventory.fuelInventory.create(machineDefinition.fuelWidth, machineDefinition.fuelHeight);
+    inventory.inputInventory.create(1, 1);
+    inventory.outputInventory.create(1, 1);
     m_MachineInventories.add(machine, inventory);
 
     CraftingMachineComponent crafting;
+    crafting.machineUniqueName = machineDefinition.uniqueName;
     crafting.availableRecipes = machineDefinition.availableRecipes;
+    crafting.requiresFuel = machineDefinition.requiresFuel;
     if (!crafting.availableRecipes.empty()) {
         crafting.currentRecipeName = crafting.availableRecipes.front();
     }
@@ -74,7 +79,7 @@ Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite, const
 
     InteractionComponent interaction;
     interaction.interactionName = machineDefinition.displayName.empty() ? "Crafting Machine" : machineDefinition.displayName;
-    interaction.interactionBounds = {-8.0f, -8.0f, 48.0f, 48.0f};
+    interaction.interactionBounds = {-8.0f, -8.0f, width + 16.0f, height + 16.0f};
     m_Interactions.add(machine, interaction);
 
     return machine;

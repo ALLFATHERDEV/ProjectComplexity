@@ -1,0 +1,13 @@
+{
+  "uniqueName": "basic_crafter_item",
+  "id": 5,
+  "displayName": "Basic Crafter",
+  "maxStackSize": 16,
+  "iconAtlasX": 6,
+  "iconAtlasY": 20,
+  "isPlaceable": true,
+  "placeableTexturePath": "assets/Sprite-0002.png",
+  "placeableBlocking": true,
+  "placeableLayer": 1,
+  "placedMachineUniqueName": "basic_crafter"
+}

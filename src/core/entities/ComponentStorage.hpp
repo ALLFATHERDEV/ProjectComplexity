@@ -65,7 +65,15 @@ public:
         return m_Components;
     }
 
+    const std::vector<T>& getRaw() const {
+        return m_Components;
+    }
+
     std::vector<Entity>& getEntities() {
+        return m_Entities;
+    }
+
+    const std::vector<Entity>& getEntities() const {
         return m_Entities;
     }
 

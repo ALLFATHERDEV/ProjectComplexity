@@ -13,6 +13,15 @@ struct ItemDefinition {
 
     int iconAtlasX = 0;
     int iconAtlasY = 0;
+    float fuelValue = 0.0f;
+    bool isPlaceable = false;
+    std::string placeableTexturePath;
+    int placeableWidthTiles = 1;
+    int placeableHeightTiles = 1;
+    bool placeableBlocking = true;
+    int placeableLayer = 1;
+    std::string placedMachineUniqueName;
 
     Sprite icon;
+    Sprite placeableSprite;
 };

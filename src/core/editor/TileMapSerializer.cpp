@@ -35,6 +35,7 @@ bool TileMapSerializer::save(const World& world, const std::string &filePath) {
     const TileMap& tileMap = world.getTileMap();
     const auto& layers = tileMap.getLayers();
     const auto conveyors = world.getConveyorBeltData();
+    std::vector<std::tuple<int, int, int, std::string, int, int, bool>> placeables;
 
     file << "TILEMAP_V1\n";
     file << "LAYERS " << layers.size() << "\n";
@@ -52,6 +53,19 @@ bool TileMapSerializer::save(const World& world, const std::string &filePath) {
         for (const Tile& tile : layer.getTiles()) {
             if (!tile.shouldRender) continue;
 
+            if (tile.isPlaceableRoot) {
+                placeables.emplace_back(
+                    static_cast<int>(layerIndex),
+                    tile.x,
+                    tile.y,
+                    tile.placeableItemName,
+                    tile.widthTiles,
+                    tile.heightTiles,
+                    tile.isBlocking
+                );
+                continue;
+            }
+
             file << "TILE "
                  << layerIndex << " "
                  << tile.x << " "
@@ -61,6 +75,19 @@ bool TileMapSerializer::save(const World& world, const std::string &filePath) {
                  << (tile.isBlocking ? 1 : 0)
                  << "\n";
         }
+    }
+
+    file << "PLACEABLES " << placeables.size() << "\n";
+    for (const auto& [layerIndex, tileX, tileY, itemName, widthTiles, heightTiles, isBlocking] : placeables) {
+        file << "PLACEABLE "
+             << layerIndex << " "
+             << tileX << " "
+             << tileY << " "
+             << itemName << " "
+             << widthTiles << " "
+             << heightTiles << " "
+             << (isBlocking ? 1 : 0)
+             << "\n";
     }
 
     file << "CONVEYORS " << conveyors.size() << "\n";
@@ -110,6 +137,10 @@ bool TileMapSerializer::load(World& world, const std::string &filePath) {
         {
             // Count is optional metadata for now.
         }
+        else if (type == "PLACEABLES")
+        {
+            // Count is optional metadata for now.
+        }
         else if (type == "LAYER")
         {
             int layerIndex;
@@ -156,6 +187,34 @@ bool TileMapSerializer::load(World& world, const std::string &filePath) {
 
             ss >> tileX >> tileY >> directionValue;
             world.placeConveyorBelt(tileX, tileY, intToDirection(directionValue));
+        }
+        else if (type == "PLACEABLE")
+        {
+            int layerIndex;
+            int tileX;
+            int tileY;
+            std::string itemName;
+            int widthTiles;
+            int heightTiles;
+            int blockingInt;
+
+            ss >> layerIndex >> tileX >> tileY >> itemName >> widthTiles >> heightTiles >> blockingInt;
+
+            const ItemDefinition* item = world.getItemDatabase().getItem(itemName);
+            if (!item || !item->isPlaceable || !item->placeableSprite.texture) {
+                continue;
+            }
+
+            world.getTileMap().setTileObject(
+                tileX,
+                tileY,
+                item->placeableSprite,
+                layerIndex,
+                widthTiles,
+                heightTiles,
+                blockingInt != 0,
+                itemName
+            );
         }
     }
 

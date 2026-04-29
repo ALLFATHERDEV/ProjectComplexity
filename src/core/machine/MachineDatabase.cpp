@@ -37,10 +37,13 @@ bool MachineDatabase::loadMachinesFromFolder(const std::string& folderPath) {
         MachineDefinition machine;
         machine.uniqueName = data.value("uniqueName", "");
         machine.displayName = data.value("displayName", "");
-        machine.inputWidth = data.value("inputWidth", 1);
-        machine.inputHeight = data.value("inputHeight", 1);
-        machine.outputWidth = data.value("outputWidth", 1);
-        machine.outputHeight = data.value("outputHeight", 1);
+        machine.spriteAtlasX = data.value("spriteAtlasX", 0);
+        machine.spriteAtlasY = data.value("spriteAtlasY", 0);
+        machine.widthTiles = std::max(1, data.value("widthTiles", 1));
+        machine.heightTiles = std::max(1, data.value("heightTiles", 1));
+        machine.requiresFuel = data.value("requiresFuel", true);
+        machine.fuelWidth = data.value("fuelWidth", 1);
+        machine.fuelHeight = data.value("fuelHeight", 1);
 
         if (data.contains("availableRecipes") && data["availableRecipes"].is_array()) {
             for (const auto& recipeName : data["availableRecipes"]) {

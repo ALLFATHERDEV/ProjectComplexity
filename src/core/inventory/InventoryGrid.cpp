@@ -7,6 +7,31 @@ void InventoryGrid::create(int width, int height) {
     m_Slots.resize(width * height);
 }
 
+bool InventoryGrid::resizePreserve(int width, int height) {
+    if (width == m_Width && height == m_Height)
+        return true;
+
+    const int oldWidth = m_Width;
+    const int oldHeight = m_Height;
+    const std::vector<InventorySlot> oldSlots = m_Slots;
+
+    create(width, height);
+
+    for (const auto& slot : oldSlots) {
+        if (slot.isEmpty())
+            continue;
+
+        if (!addItem(slot.stack.item, slot.stack.amount)) {
+            m_Width = oldWidth;
+            m_Height = oldHeight;
+            m_Slots = oldSlots;
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool InventoryGrid::addItem(const ItemDefinition *item, int amount) {
     if (!item || amount <= 0)
         return false;

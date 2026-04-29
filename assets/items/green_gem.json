@@ -4,5 +4,6 @@
   "displayName": "Green Gem",
   "maxStackSize": 32,
   "iconAtlasX": 6,
-  "iconAtlasY": 10
+  "iconAtlasY": 10,
+  "fuelValue": 20.0
 }

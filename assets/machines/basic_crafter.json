@@ -5,8 +5,11 @@
     "test_recipe",
     "test_recipe2"
   ],
-  "inputWidth": 3,
-  "inputHeight": 1,
-  "outputWidth": 1,
-  "outputHeight": 1
+  "spriteAtlasX": 0,
+  "spriteAtlasY": 3,
+  "widthTiles": 2,
+  "heightTiles": 2,
+  "requiresFuel": true,
+  "fuelWidth": 1,
+  "fuelHeight": 1
 }

@@ -1,4 +1,5 @@
 #include "GUIMachine.hpp"
+#include <algorithm>
 
 void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_GUISystem = &guiSystem;
@@ -9,11 +10,28 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_Panel->setColor({20, 20, 20, 235});
     m_Panel->setVisible(false);
 
+    m_FuelGrid = guiSystem.addElement<GUIInventoryGrid>();
+    m_FuelGrid->setPosition(410.0f, 130.0f);
+    m_FuelGrid->setSlotSize(52.0f);
+    m_FuelGrid->setSpacing(6.0f);
+    m_FuelGrid->setDragContext(dragContext);
+    m_FuelGrid->setVisible(false);
+
+    m_FuelProgressBar = guiSystem.addElement<GUIProgressBar>();
+    m_FuelProgressBar->setPosition(470.0f, 146.0f);
+    m_FuelProgressBar->setSize(180.0f, 18.0f);
+    m_FuelProgressBar->setBackgroundColor({45, 32, 22, 255});
+    m_FuelProgressBar->setFillColor({220, 150, 60, 255});
+    m_FuelProgressBar->setVisible(false);
+
     m_InputGrid = guiSystem.addElement<GUIInventoryGrid>();
     m_InputGrid->setPosition(410.0f, 190.0f);
     m_InputGrid->setSlotSize(52.0f);
     m_InputGrid->setSpacing(6.0f);
     m_InputGrid->setDragContext(dragContext);
+    m_InputGrid->setAcceptStackFn([this](const ItemStack& stack) {
+        return canAcceptInputStack(stack);
+    });
     m_InputGrid->setVisible(false);
 
     m_OutputGrid = guiSystem.addElement<GUIInventoryGrid>();
@@ -59,6 +77,15 @@ void GUIMachine::open(Entity machine) {
     if (m_InputGrid) {
         m_InputGrid->setInventory(&inventory->inputInventory);
         m_InputGrid->setVisible(true);
+    }
+
+    if (m_FuelGrid) {
+        m_FuelGrid->setInventory(&inventory->fuelInventory);
+        m_FuelGrid->setVisible(true);
+    }
+
+    if (m_FuelProgressBar) {
+        m_FuelProgressBar->setVisible(true);
     }
 
     if (m_OutputGrid) {
@@ -111,6 +138,12 @@ void GUIMachine::close() {
 
     if (m_InputGrid)
         m_InputGrid->setVisible(false);
+
+    if (m_FuelGrid)
+        m_FuelGrid->setVisible(false);
+
+    if (m_FuelProgressBar)
+        m_FuelProgressBar->setVisible(false);
 
     if (m_OutputGrid)
         m_OutputGrid->setVisible(false);
@@ -167,6 +200,23 @@ void GUIMachine::update() {
     if (!inventory) {
         close();
         return;
+    }
+
+    if (m_FuelGrid)
+        m_FuelGrid->setInventory(&inventory->fuelInventory);
+
+    if (m_FuelProgressBar && m_CraftingMachines) {
+        auto* machine = m_CraftingMachines->get(m_SelectedMachine);
+        if (machine && machine->requiresFuel) {
+            if (machine->currentFuelCapacity > 0.0f) {
+                m_FuelProgressBar->setValue(machine->fuelRemaining / machine->currentFuelCapacity);
+            } else {
+                m_FuelProgressBar->setValue(0.0f);
+            }
+            m_FuelProgressBar->setVisible(true);
+        } else {
+            m_FuelProgressBar->setVisible(false);
+        }
     }
 
     if (m_InputGrid)
@@ -227,7 +277,15 @@ void GUIMachine::updateRecipeButtons() {
             if (!selectedMachine)
                 return;
 
+            const RecipeDefinition* nextRecipe = m_RecipeDatabase ? m_RecipeDatabase->getRecipe(recipeName) : nullptr;
+            if (!nextRecipe)
+                return;
+
             if (selectedMachine->currentRecipeName != recipeName) {
+                if (!tryApplyRecipeLayout(*nextRecipe)) {
+                    return;
+                }
+
                 selectedMachine->currentRecipeName = recipeName;
                 selectedMachine->progress = 0.0f;
                 selectedMachine->isCrafting = false;
@@ -274,4 +332,52 @@ void GUIMachine::hidePlayerInventory() {
     if (m_PlayerInventoryGrid) {
         m_PlayerInventoryGrid->setVisible(false);
     }
+}
+
+bool GUIMachine::canAcceptInputStack(const ItemStack& stack) const {
+    if (stack.isEmpty() || !stack.item || !m_CraftingMachines || !m_RecipeDatabase) {
+        return false;
+    }
+
+    auto* machine = m_CraftingMachines->get(m_SelectedMachine);
+    if (!machine) {
+        return false;
+    }
+
+    const RecipeDefinition* recipe = m_RecipeDatabase->getRecipe(machine->currentRecipeName);
+    if (!recipe) {
+        return false;
+    }
+
+    for (const auto& ingredient : recipe->inputs) {
+        if (ingredient.itemName == stack.item->uniqueName) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool GUIMachine::tryApplyRecipeLayout(const RecipeDefinition& recipe) const {
+    if (!m_MachineInventories) {
+        return false;
+    }
+
+    auto* inventory = m_MachineInventories->get(m_SelectedMachine);
+    if (!inventory) {
+        return false;
+    }
+
+    const int inputSlots = std::max(1, static_cast<int>(recipe.inputs.size()));
+    const int outputSlots = recipe.outputItemName.empty() ? 0 : 1;
+
+    if (!inventory->inputInventory.resizePreserve(inputSlots, 1)) {
+        return false;
+    }
+
+    if (!inventory->outputInventory.resizePreserve(outputSlots, outputSlots > 0 ? 1 : 0)) {
+        return false;
+    }
+
+    return true;
 }

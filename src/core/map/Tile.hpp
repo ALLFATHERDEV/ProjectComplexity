@@ -1,5 +1,7 @@
 #ifndef PROJECTCOMPLEXITY_TILE_H
 #define PROJECTCOMPLEXITY_TILE_H
+#include <string>
+
 #include "../graphics/Sprite.hpp"
 
 struct Tile {
@@ -9,9 +11,16 @@ struct Tile {
 
     int atlasX = 0;
     int atlasY = 0;
+    int widthTiles = 1;
+    int heightTiles = 1;
+    int rootX = 0;
+    int rootY = 0;
 
     Sprite sprite{};
+    std::string placeableItemName;
 
+    bool isOccupied = false;
+    bool isPlaceableRoot = false;
     bool shouldRender = false;
     bool isBlocking = false;
 };

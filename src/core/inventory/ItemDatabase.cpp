@@ -1,16 +1,32 @@
 #include "ItemDatabase.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <SDL3_image/SDL_image.h>
 
 #include "../Logger.hpp"
 
 using json = nlohmann::json;
 
-bool ItemDatabase::loadItemsFromFolder(const std::string &folderPath, SpriteAtlas &atlas) {
+ItemDatabase::~ItemDatabase() {
+    for (auto& [_, texture] : m_PlaceableTextures) {
+        if (texture) {
+            SDL_DestroyTexture(texture);
+        }
+    }
+}
+
+bool ItemDatabase::loadItemsFromFolder(const std::string &folderPath, SpriteAtlas &atlas, const Renderer& renderer) {
 
     m_Items.clear();
+    for (auto& [_, texture] : m_PlaceableTextures) {
+        if (texture) {
+            SDL_DestroyTexture(texture);
+        }
+    }
+    m_PlaceableTextures.clear();
 
     if (!std::filesystem::exists(folderPath)) {
         LOG_ERROR("Item folder does not exist: {}", folderPath);
@@ -38,6 +54,14 @@ bool ItemDatabase::loadItemsFromFolder(const std::string &folderPath, SpriteAtla
         item.maxStackSize = data.value("maxStackSize", 1);
         item.iconAtlasX = data.value("iconAtlasX", 0);
         item.iconAtlasY = data.value("iconAtlasY", 0);
+        item.fuelValue = data.value("fuelValue", 0.0f);
+        item.isPlaceable = data.value("isPlaceable", false);
+        item.placeableTexturePath = data.value("placeableTexturePath", "");
+        item.placeableWidthTiles = std::max(1, data.value("placeableWidthTiles", 1));
+        item.placeableHeightTiles = std::max(1, data.value("placeableHeightTiles", 1));
+        item.placeableBlocking = data.value("placeableBlocking", true);
+        item.placeableLayer = data.value("placeableLayer", 1);
+        item.placedMachineUniqueName = data.value("placedMachineUniqueName", "");
         item.icon = atlas.getSprite(item.iconAtlasX, item.iconAtlasY);
 
         if (item.uniqueName.empty()) {
@@ -47,6 +71,20 @@ bool ItemDatabase::loadItemsFromFolder(const std::string &folderPath, SpriteAtla
         if (m_Items.contains(item.uniqueName)) {
             LOG_WARN("Item with unique name {} already exists, Skipping item", item.uniqueName);
             continue;
+        }
+
+        if (item.isPlaceable && !item.placeableTexturePath.empty()) {
+            SDL_Texture* texture = IMG_LoadTexture(renderer.getSDLRenderer(), item.placeableTexturePath.c_str());
+            if (!texture) {
+                LOG_WARN("Could not load placeable texture {}", item.placeableTexturePath);
+            } else {
+                float textureWidth = 0.0f;
+                float textureHeight = 0.0f;
+                SDL_GetTextureSize(texture, &textureWidth, &textureHeight);
+                item.placeableSprite.texture = texture;
+                item.placeableSprite.srcRect = {0.0f, 0.0f, textureWidth, textureHeight};
+                m_PlaceableTextures[item.uniqueName] = texture;
+            }
         }
 
         m_Items[item.uniqueName] = item;

@@ -45,6 +45,8 @@ private:
     Entity m_Player = 0;
 
     GUIPanel* m_Panel = nullptr;
+    GUIInventoryGrid* m_FuelGrid = nullptr;
+    GUIProgressBar* m_FuelProgressBar = nullptr;
     GUIInventoryGrid* m_InputGrid = nullptr;
     GUIInventoryGrid* m_OutputGrid = nullptr;
     GUIProgressBar* m_ProgressBar = nullptr;
@@ -55,4 +57,6 @@ private:
     void showPlayerInventory();
     void hidePlayerInventory();
     void rebuildRecipeButtons(GUISystem& guiSystem);
+    bool canAcceptInputStack(const ItemStack& stack) const;
+    bool tryApplyRecipeLayout(const RecipeDefinition& recipe) const;
 };

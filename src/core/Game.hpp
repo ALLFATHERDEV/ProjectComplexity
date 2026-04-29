@@ -36,6 +36,10 @@ private:
     World m_World;
     TileMapEditor m_TileMapEditor;
 
+    bool isDraggingPlaceableItem() const;
+    bool tryPlaceDraggedItem(const SDL_Event& event);
+    void renderDraggedPlaceablePreview();
+
 };
 
 #endif //PROJECTCOMPLEXITY_GAME_H

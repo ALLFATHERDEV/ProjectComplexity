@@ -16,6 +16,7 @@ public:
 
     void draw(SDL_Texture *texture, SDL_FRect srcRect, SDL_FRect &destRect) const;
     void drawSprite(const Sprite &sprite, SDL_FRect& destRect) const;
+    void drawSpriteAlpha(const Sprite& sprite, SDL_FRect& destRect, Uint8 alpha) const;
     void drawFilledRect(const SDL_FRect& rect, SDL_Color color) const;
     void drawRect(const SDL_FRect& rect, SDL_Color color) const;
     void drawText(const std::string& text, float x, float y, SDL_Color color);

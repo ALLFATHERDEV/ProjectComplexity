@@ -53,6 +53,8 @@ public:
     const TileMap& getTileMap() const { return m_TileMap; }
     SpriteAtlas& getTileMapAtlas() { return m_TileMapAtlas; }
     SpriteAtlas& getConveyorAtlas() { return m_ConveyorAtlas; }
+    ItemDatabase& getItemDatabase() { return m_ItemDatabase; }
+    const ItemDatabase& getItemDatabase() const { return m_ItemDatabase; }
     ChunkManager& getChunkManager() { return m_ChunkManager; }
     const ChunkManager& getChunkManager() const { return m_ChunkManager; }
     ComponentStorage<InventoryComponent>& getInventories() { return m_Inventories; }
@@ -60,12 +62,18 @@ public:
     ComponentStorage<CraftingMachineComponent>& getCraftingMachines() { return m_CraftingMachines; }
     const RecipeDatabase& getRecipeDatabase() const { return m_RecipeDatabase; }
     Entity getPlayer() const { return m_Player; }
+    bool canPlaceItem(const ItemDefinition& item, int tileX, int tileY) const;
+    bool placeItem(const ItemDefinition& item, int tileX, int tileY);
+    void renderPlacementPreview(const ItemDefinition& item, int tileX, int tileY) const;
     void placeConveyorBelt(int tileX, int tileY, Direction direction);
     void removeConveyorBelt(int tileX, int tileY);
     void clearConveyorBelts();
     std::vector<std::tuple<int, int, Direction>> getConveyorBeltData() const;
 
 private:
+    bool isAreaBlockedByEntity(const SDL_FRect& rect) const;
+    Sprite getMachineSprite(const MachineDefinition& machineDefinition) const;
+
     Camera2D m_Camera;
     Entity m_Player;
     Entity m_Machine;

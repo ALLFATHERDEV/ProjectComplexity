@@ -21,6 +21,22 @@ void TileMap::setTile(int x, int y, const Sprite &sprite, int layer, int atlasX,
     mapLayer.setTile(x, y, sprite, atlasX, atlasY, isBlocking);
 }
 
+bool TileMap::canPlaceTileObject(int x, int y, int layer, int widthTiles, int heightTiles) const {
+    if (layer < 0 || layer >= static_cast<int>(m_Layers.size())) {
+        return false;
+    }
+
+    return m_Layers[layer].canPlaceTileObject(x, y, widthTiles, heightTiles);
+}
+
+bool TileMap::setTileObject(int x, int y, const Sprite& sprite, int layer, int widthTiles, int heightTiles, bool isBlocking, const std::string& itemName) {
+    if (layer < 0 || layer >= static_cast<int>(m_Layers.size())) {
+        return false;
+    }
+
+    return m_Layers[layer].setTileObject(x, y, sprite, widthTiles, heightTiles, isBlocking, itemName);
+}
+
 void TileMap::clearTile(int x, int y, int layer) {
     TileMapLayer & mapLayer = m_Layers[layer];
     mapLayer.clearTile(x, y);
