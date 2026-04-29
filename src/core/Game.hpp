@@ -8,8 +8,6 @@
 #include "gui/GUISystem.hpp"
 #include "gui/craftingmachine/GUIMachine.hpp"
 #include "gui/elements/GUIDragPeview.hpp"
-#include "gui/elements/GUIInventoryGrid.hpp"
-#include "gui/elements/GUIPanel.hpp"
 #include "world/World.hpp"
 
 
@@ -30,8 +28,6 @@ private:
     bool m_Running = true;
 
     GUISystem m_GUISystem;
-    GUIPanel* m_InventoryPanel = nullptr;
-    GUIInventoryGrid* m_PlayerInventoryGrid = nullptr;
     GUIMachine m_MachineGUI;
     GUIDragContext m_GUIDragContext;
     GUIDragPreview* m_GUIDragPreview;

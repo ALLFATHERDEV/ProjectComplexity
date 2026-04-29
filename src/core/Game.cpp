@@ -37,26 +37,12 @@ Game::Game(){
     m_World.setRenderer(&m_Renderer);
     m_World.initializeWorld();
 
-    m_InventoryPanel = m_GUISystem.addElement<GUIPanel>();
-    m_InventoryPanel->setPosition(1040.0f, 120.0f);
-    m_InventoryPanel->setSize(600.0f, 400.0f);
-    m_InventoryPanel->setColor({20, 20, 20, 230});
-    m_InventoryPanel->setVisible(false);
-
-    m_PlayerInventoryGrid = m_GUISystem.addElement<GUIInventoryGrid>();
-    m_PlayerInventoryGrid->setPosition(1080.0f, 170.0f);
-    m_PlayerInventoryGrid->setSize(500.0f, 300.0f);
-    m_PlayerInventoryGrid->setSlotSize(48.0f);
-    m_PlayerInventoryGrid->setSpacing(6.0f);
-    m_PlayerInventoryGrid->setDragContext(&m_GUIDragContext);
-    m_PlayerInventoryGrid->setVisible(false);
-
-    auto* playerInventory = m_World.getInventories().get(m_World.getPlayer());
-    if (playerInventory)
-        m_PlayerInventoryGrid->setInventory(&playerInventory->inventory);
-
     m_MachineGUI.create(m_GUISystem, &m_GUIDragContext);
-    m_MachineGUI.bind(&m_World.getMachineInventories(), &m_World.getCraftingMachines(), &m_World.getRecipeDatabase());
+    m_MachineGUI.bind(&m_World.getMachineInventories(),
+                      &m_World.getCraftingMachines(),
+                      &m_World.getRecipeDatabase(),
+                      &m_World.getInventories(),
+                      m_World.getPlayer());
 
     m_GUIDragPreview = m_GUISystem.addElement<GUIDragPreview>();
     m_GUIDragPreview->setDragContext(&m_GUIDragContext);
@@ -110,19 +96,16 @@ void Game::events() {
 
         ImGuiIO& io = ImGui::GetIO();
         if (!io.WantCaptureMouse) {
-            m_TileMapEditor.update(event, m_World.getTileMap(), m_World.getTileMapAtlas(), m_World.getCamera());
+            m_TileMapEditor.update(event, m_World, m_World.getCamera());
         }
 
         if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_TAB) {
-            bool open = !m_InventoryPanel->isVisible();
-
-            m_InventoryPanel->setVisible(open);
-            m_PlayerInventoryGrid->setVisible(open);
+            m_MachineGUI.togglePlayerInventory();
         }
         m_GUISystem.handleEvent(event);
 
         if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE) {
-            if (m_MachineGUI.isOpen()) {
+            if (m_MachineGUI.isOpen() || m_MachineGUI.isPlayerInventoryOpen()) {
                 m_MachineGUI.close();
             }
         }
@@ -152,7 +135,7 @@ void Game::render() {
     m_World.render();
     m_GUISystem.render(&m_Renderer);
 
-    m_TileMapEditor.renderImGui(m_World.getTileMap(), m_World.getTileMapAtlas());
+    m_TileMapEditor.renderImGui(m_World);
 
     ImGui::Render();
 

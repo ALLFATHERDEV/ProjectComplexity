@@ -32,6 +32,14 @@ public:
         return &m_Components[it->second];
     }
 
+    const T* get(Entity e) const {
+        auto it = m_EntityToIndex.find(e);
+        if (it == m_EntityToIndex.end())
+            return nullptr;
+
+        return &m_Components[it->second];
+    }
+
     void remove(Entity e) {
         auto it = m_EntityToIndex.find(e);
         if (it == m_EntityToIndex.end())

@@ -31,8 +31,12 @@ target_sources(ProjectComplexity PRIVATE
         component/InventoryComponent.hpp
         component/MachineInventoryComponent.hpp
         component/CraftingMachineComponent.hpp
+        component/ConveyorBeltComponent.hpp
+        component/ConveyorItemComponent.hpp
         systems/CraftingSystem.cpp
         systems/CraftingSystem.hpp
+        systems/ConveyorSystem.cpp
+        systems/ConveyorSystem.hpp
         component/InteractionComponent.hpp
         systems/InteractionSystem.cpp
         systems/InteractionSystem.hpp

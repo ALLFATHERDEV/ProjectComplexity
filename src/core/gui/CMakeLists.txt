@@ -8,4 +8,5 @@ target_sources(ProjectComplexity PRIVATE
         elements/GUIProgressBar.hpp
         GUIDragContext.hpp
         elements/GUIDragPeview.hpp
+        elements/GUIButton.hpp
 )

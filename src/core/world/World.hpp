@@ -5,6 +5,8 @@
 #include "../entities/EntityManager.hpp"
 #include "../entities/component/AnimatedSpriteComponent.hpp"
 #include "../entities/component/CollisionComponent.hpp"
+#include "../entities/component/ConveyorBeltComponent.hpp"
+#include "../entities/component/ConveyorItemComponent.hpp"
 #include "../entities/component/CraftingMachineComponent.hpp"
 #include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
@@ -16,6 +18,7 @@
 #include "../entities/systems/AnimationSystem.hpp"
 #include "../entities/systems/CharacterStateSystem.hpp"
 #include "../entities/systems/CollisionSystem.hpp"
+#include "../entities/systems/ConveyorSystem.hpp"
 #include "../entities/systems/CraftingSystem.hpp"
 #include "../entities/systems/InputSystem.hpp"
 #include "../entities/systems/InteractionSystem.hpp"
@@ -25,7 +28,10 @@
 #include "../graphics/Renderer.hpp"
 #include "../graphics/SpriteAtlas.hpp"
 #include "../inventory/ItemDatabase.hpp"
+#include "../machine/MachineDatabase.hpp"
 #include "../map/TileMap.hpp"
+#include <tuple>
+#include <unordered_map>
 
 struct InputComponent;
 struct VelocityComponent;
@@ -44,14 +50,21 @@ public:
 
     Camera2D& getCamera() { return m_Camera; }
     TileMap& getTileMap() { return m_TileMap; }
+    const TileMap& getTileMap() const { return m_TileMap; }
     SpriteAtlas& getTileMapAtlas() { return m_TileMapAtlas; }
+    SpriteAtlas& getConveyorAtlas() { return m_ConveyorAtlas; }
     ComponentStorage<InventoryComponent>& getInventories() { return m_Inventories; }
     ComponentStorage<MachineInventoryComponent>& getMachineInventories() { return m_MachineInventories; }
     ComponentStorage<CraftingMachineComponent>& getCraftingMachines() { return m_CraftingMachines; }
     const RecipeDatabase& getRecipeDatabase() const { return m_RecipeDatabase; }
-    Entity getPlayer() { return m_Player; }
+    Entity getPlayer() const { return m_Player; }
+    void placeConveyorBelt(int tileX, int tileY, Direction direction);
+    void removeConveyorBelt(int tileX, int tileY);
+    void clearConveyorBelts();
+    std::vector<std::tuple<int, int, Direction>> getConveyorBeltData() const;
 
 private:
+    static long long makeTileKey(int tileX, int tileY) ;
 
     Camera2D m_Camera;
     Entity m_Player;
@@ -60,9 +73,11 @@ private:
     Renderer* m_Renderer = nullptr;
     TileMap m_TileMap;
     SpriteAtlas m_TileMapAtlas;
+    SpriteAtlas m_ConveyorAtlas;
 
     ItemDatabase m_ItemDatabase;
     SpriteAtlas m_ItemAtlas;
+    MachineDatabase m_MachineDatabase;
 
     EntityManager m_EntityManager;
     RecipeDatabase m_RecipeDatabase;
@@ -75,10 +90,13 @@ private:
     ComponentStorage<CharacterStateComponent> m_CharacterStates;
     ComponentStorage<AnimationControllerComponent> m_AnimationControllers;
     ComponentStorage<CollisionComponent> m_Collisions;
+    ComponentStorage<ConveyorBeltComponent> m_ConveyorBelts;
+    ComponentStorage<ConveyorItemComponent> m_ConveyorItems;
     ComponentStorage<InventoryComponent> m_Inventories;
     ComponentStorage<MachineInventoryComponent> m_MachineInventories;
     ComponentStorage<CraftingMachineComponent> m_CraftingMachines;
     ComponentStorage<InteractionComponent> m_Interactions;
+    std::unordered_map<long long, Entity> m_ConveyorEntitiesByTile;
 
     AnimationLibrary m_AnimationLibrary;
 
@@ -93,6 +111,7 @@ private:
     CharacterStateSystem m_CharacterStateSystem;
     AnimationStateSystem m_AnimationStateSystem;
     CollisionSystem m_CollisionSystem;
+    ConveyorSystem m_ConveyorSystem;
     CraftingSystem m_CraftingSystem;
     InteractionSystem m_InteractionSystem;
 

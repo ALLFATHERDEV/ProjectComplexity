@@ -4,14 +4,37 @@
 
 #include "../Logger.hpp"
 
-bool TileMapSerializer::save(const TileMap &tileMap, const std::string &filePath) {
+namespace {
+int directionToInt(Direction direction) {
+    return static_cast<int>(direction);
+}
+
+Direction intToDirection(int value) {
+    switch (value) {
+        case 0:
+            return Direction::DOWN;
+        case 1:
+            return Direction::UP;
+        case 2:
+            return Direction::LEFT;
+        case 3:
+            return Direction::RIGHT;
+        default:
+            return Direction::RIGHT;
+    }
+}
+}
+
+bool TileMapSerializer::save(const World& world, const std::string &filePath) {
     std::ofstream file(filePath);
 
     if (!file.is_open()) {
         return false;
     }
 
+    const TileMap& tileMap = world.getTileMap();
     const auto& layers = tileMap.getLayers();
+    const auto conveyors = world.getConveyorBeltData();
 
     file << "TILEMAP_V1\n";
     file << "LAYERS " << layers.size() << "\n";
@@ -40,17 +63,30 @@ bool TileMapSerializer::save(const TileMap &tileMap, const std::string &filePath
         }
     }
 
+    file << "CONVEYORS " << conveyors.size() << "\n";
+    for (const auto& [tileX, tileY, direction] : conveyors) {
+        file << "CONVEYOR "
+             << tileX << " "
+             << tileY << " "
+             << directionToInt(direction)
+             << "\n";
+    }
+
     return true;
 }
 
-bool TileMapSerializer::load(TileMap &tileMap, SpriteAtlas &atlas, const std::string &filePath) {
+bool TileMapSerializer::load(World& world, const std::string &filePath) {
     std::ifstream file(filePath);
     LOG_INFO("Loading map {}", filePath);
 
     if (!file.is_open())
         return false;
 
+    TileMap& tileMap = world.getTileMap();
+    SpriteAtlas& atlas = world.getTileMapAtlas();
+
     tileMap.clear();
+    world.clearConveyorBelts();
 
     std::string line;
     std::getline(file, line);
@@ -69,6 +105,10 @@ bool TileMapSerializer::load(TileMap &tileMap, SpriteAtlas &atlas, const std::st
         if (type == "LAYERS")
         {
             // Kannst du erstmal ignorieren
+        }
+        else if (type == "CONVEYORS")
+        {
+            // Count is optional metadata for now.
         }
         else if (type == "LAYER")
         {
@@ -107,6 +147,15 @@ bool TileMapSerializer::load(TileMap &tileMap, SpriteAtlas &atlas, const std::st
                 atlasY,
                 blockingInt != 0
             );
+        }
+        else if (type == "CONVEYOR")
+        {
+            int tileX;
+            int tileY;
+            int directionValue;
+
+            ss >> tileX >> tileY >> directionValue;
+            world.placeConveyorBelt(tileX, tileY, intToDirection(directionValue));
         }
     }
 

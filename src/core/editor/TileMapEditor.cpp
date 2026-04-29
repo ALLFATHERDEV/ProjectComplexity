@@ -12,7 +12,7 @@ bool TileMapEditor::isEnabled() const {
     return m_Enabled;
 }
 
-void TileMapEditor::update(SDL_Event &event, TileMap &tileMap, SpriteAtlas &tileAtlas, const Camera2D &camera) {
+void TileMapEditor::update(SDL_Event &event, World& world, const Camera2D &camera) {
     if (!m_Enabled) return;
 
     if (event.type != SDL_EVENT_MOUSE_BUTTON_DOWN)
@@ -29,31 +29,61 @@ void TileMapEditor::update(SDL_Event &event, TileMap &tileMap, SpriteAtlas &tile
     int tileY = static_cast<int>(worldY) / m_CellHeight;
 
     if (event.button.button == SDL_BUTTON_LEFT) {
-        Sprite sprite = tileAtlas.getSprite(m_SelectedTileX, m_SelectedTileY);
-        tileMap.setTile(tileX, tileY, sprite, m_SelectedLayer, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
+        if (m_PlacementMode == PlacementMode::Tile) {
+            Sprite sprite = world.getTileMapAtlas().getSprite(m_SelectedTileX, m_SelectedTileY);
+            world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
+        } else {
+            world.placeConveyorBelt(tileX, tileY, m_SelectedConveyorDirection);
+        }
     }
 
     if (event.button.button == SDL_BUTTON_RIGHT) {
-        tileMap.clearTile(tileX, tileY, m_SelectedLayer);
+        if (m_PlacementMode == PlacementMode::Tile) {
+            world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
+        } else {
+            world.removeConveyorBelt(tileX, tileY);
+        }
     }
 }
 
-void TileMapEditor::renderImGui(TileMap &tileMap, SpriteAtlas &tileAtlas) {
+void TileMapEditor::renderImGui(World& world) {
     if (!m_Enabled) return;
 
-    renderTilePalette(tileAtlas);
+    if (m_PlacementMode == PlacementMode::Tile) {
+        renderTilePalette(world.getTileMapAtlas());
+    } else {
+        renderConveyorPalette(world.getConveyorAtlas());
+    }
 
     ImGui::Begin("TileMap Editor");
 
-    ImGui::InputInt("Layer", &m_SelectedLayer);
-    ImGui::Checkbox("Blocking", &m_SelectedBlocking);
+    int placementMode = static_cast<int>(m_PlacementMode);
+    ImGui::RadioButton("Tiles", &placementMode, static_cast<int>(PlacementMode::Tile));
+    ImGui::SameLine();
+    ImGui::RadioButton("Conveyor", &placementMode, static_cast<int>(PlacementMode::Conveyor));
+    m_PlacementMode = static_cast<PlacementMode>(placementMode);
+
+    if (m_PlacementMode == PlacementMode::Tile) {
+        ImGui::InputInt("Layer", &m_SelectedLayer);
+        ImGui::Checkbox("Blocking", &m_SelectedBlocking);
+    } else {
+        int selectedDirection = static_cast<int>(m_SelectedConveyorDirection);
+        ImGui::RadioButton("Right", &selectedDirection, static_cast<int>(Direction::RIGHT));
+        ImGui::SameLine();
+        ImGui::RadioButton("Down", &selectedDirection, static_cast<int>(Direction::DOWN));
+        ImGui::SameLine();
+        ImGui::RadioButton("Left", &selectedDirection, static_cast<int>(Direction::LEFT));
+        ImGui::SameLine();
+        ImGui::RadioButton("Up", &selectedDirection, static_cast<int>(Direction::UP));
+        m_SelectedConveyorDirection = static_cast<Direction>(selectedDirection);
+    }
 
     if (ImGui::Button("Save Map")) {
-        TileMapSerializer::save(tileMap, "maps/test.map");
+        TileMapSerializer::save(world, "maps/test.map");
     }
 
     if (ImGui::Button("Load Map")) {
-        TileMapSerializer::load(tileMap, tileAtlas, "maps/test.map");
+        TileMapSerializer::load(world, "maps/test.map");
     }
 
     ImGui::End();
@@ -112,4 +142,51 @@ void TileMapEditor::renderTilePalette(SpriteAtlas &atlas) {
     ImGui::End();
 }
 
+void TileMapEditor::renderConveyorPalette(SpriteAtlas &atlas) {
+    ImGui::Begin("Conveyor Palette");
+
+    SDL_Texture* texture = atlas.getTexture();
+    if (!texture) {
+        ImGui::Text("No conveyor atlas loaded");
+        ImGui::End();
+        return;
+    }
+
+    struct ConveyorOption {
+        Direction direction;
+        int atlasX;
+        int atlasY;
+        const char* label;
+    };
+
+    const ConveyorOption options[] = {
+        {Direction::RIGHT, 3, 0, "Right"},
+        {Direction::DOWN, 0, 0, "Down"},
+        {Direction::LEFT, 2, 0, "Left"},
+        {Direction::UP, 1, 0, "Up"}
+    };
+
+    constexpr float tilePreviewSize = 48.0f;
+    for (int i = 0; i < 4; i++) {
+        const ConveyorOption& option = options[i];
+        ImGui::PushID(i);
+
+        const float u0 = static_cast<float>(option.atlasX * atlas.getSpriteWidth()) / atlas.getTextureWidth();
+        const float v0 = static_cast<float>(option.atlasY * atlas.getSpriteHeight()) / atlas.getTextureHeight();
+        const float u1 = static_cast<float>((option.atlasX + 1) * atlas.getSpriteWidth()) / atlas.getTextureWidth();
+        const float v1 = static_cast<float>((option.atlasY + 1) * atlas.getSpriteHeight()) / atlas.getTextureHeight();
+
+        if (ImGui::ImageButton(option.label, (ImTextureID)texture, ImVec2(tilePreviewSize, tilePreviewSize), ImVec2(u0, v0), ImVec2(u1, v1))) {
+            m_SelectedConveyorDirection = option.direction;
+        }
+
+        if (i < 3) {
+            ImGui::SameLine();
+        }
+
+        ImGui::PopID();
+    }
+
+    ImGui::End();
+}
 

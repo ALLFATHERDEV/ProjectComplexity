@@ -2,9 +2,26 @@
 
 #include "../Logger.hpp"
 #include "../entities/component/CraftingMachineComponent.hpp"
+#include "../entities/component/ConveyorBeltComponent.hpp"
 #include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
 #include "../entities/component/MachineInventoryComponent.hpp"
+#include "../graphics/SpriteAtlas.hpp"
+
+Sprite getConveyorSpriteForDirection(const SpriteAtlas& atlas, Direction direction) {
+    switch (direction) {
+        case Direction::DOWN:
+            return atlas.getSprite(0, 6);
+        case Direction::UP:
+            return atlas.getSprite(2, 6);
+        case Direction::LEFT:
+            return atlas.getSprite(7, 5);
+        case Direction::RIGHT:
+            return atlas.getSprite(0, 5);
+        default:
+            return atlas.getSprite(0, 0);
+    }
+}
 
 Entity EntityFactory::createPlayer(Vec2f position) {
     Entity player = m_EntityManager.createEntity();
@@ -36,7 +53,7 @@ Entity EntityFactory::createPlayer(Vec2f position) {
     return player;
 }
 
-Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite) {
+Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite, const MachineDefinition& machineDefinition) {
     Entity machine = m_EntityManager.createEntity();
 
     m_Positions.add(machine, { position });
@@ -44,18 +61,33 @@ Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite) {
     m_Collisions.add(machine, { SDL_FRect(0.0f, 0.0f, 16.0f, 16.0f), true, false });
 
     MachineInventoryComponent inventory;
-    inventory.inputInventory.create(3, 1);
-    inventory.outputInventory.create(1, 1);
+    inventory.inputInventory.create(machineDefinition.inputWidth, machineDefinition.inputHeight);
+    inventory.outputInventory.create(machineDefinition.outputWidth, machineDefinition.outputHeight);
     m_MachineInventories.add(machine, inventory);
 
     CraftingMachineComponent crafting;
-    crafting.currentRecipeName = "test_recipe";
+    crafting.availableRecipes = machineDefinition.availableRecipes;
+    if (!crafting.availableRecipes.empty()) {
+        crafting.currentRecipeName = crafting.availableRecipes.front();
+    }
     m_CraftingMachines.add(machine, crafting);
 
     InteractionComponent interaction;
-    interaction.interactionName = "Crafting Machine";
+    interaction.interactionName = machineDefinition.displayName.empty() ? "Crafting Machine" : machineDefinition.displayName;
     interaction.interactionBounds = {-8.0f, -8.0f, 48.0f, 48.0f};
     m_Interactions.add(machine, interaction);
 
     return machine;
+}
+
+Entity EntityFactory::createConveyorBelt(Vec2f position, const SpriteAtlas& atlas, Direction direction) {
+    Entity belt = m_EntityManager.createEntity();
+
+    Sprite sprite = getConveyorSpriteForDirection(atlas, direction);
+
+    m_Positions.add(belt, { position });
+    m_Sprites.add(belt, { sprite });
+    m_ConveyorBelts.add(belt, { direction });
+
+    return belt;
 }

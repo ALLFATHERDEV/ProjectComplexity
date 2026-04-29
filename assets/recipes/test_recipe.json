@@ -1,0 +1,13 @@
+{
+  "uniqueName": "test_recipe",
+  "displayName": "Test Recipe",
+  "inputs": [
+    {
+      "itemName": "iron_ingot",
+      "amount": 2
+    }
+  ],
+  "outputItemName": "copper_ingot",
+  "outputAmount": 3,
+  "craftTime": 5.0
+}

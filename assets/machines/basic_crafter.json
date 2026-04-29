@@ -1,0 +1,12 @@
+{
+  "uniqueName": "basic_crafter",
+  "displayName": "Crafting Machine",
+  "availableRecipes": [
+    "test_recipe",
+    "test_recipe2"
+  ],
+  "inputWidth": 3,
+  "inputHeight": 1,
+  "outputWidth": 1,
+  "outputHeight": 1
+}
