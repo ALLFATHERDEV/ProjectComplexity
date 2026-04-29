@@ -1,6 +1,8 @@
 #ifndef PROJECTCOMPLEXITY_WORLD_H
 #define PROJECTCOMPLEXITY_WORLD_H
 #include "AnimationLibrary.hpp"
+#include "ChunkManager.hpp"
+#include "ConveyorManager.hpp"
 #include "../entities/ComponentStorage.hpp"
 #include "../entities/EntityManager.hpp"
 #include "../entities/component/AnimatedSpriteComponent.hpp"
@@ -30,8 +32,6 @@
 #include "../inventory/ItemDatabase.hpp"
 #include "../machine/MachineDatabase.hpp"
 #include "../map/TileMap.hpp"
-#include <tuple>
-#include <unordered_map>
 
 struct InputComponent;
 struct VelocityComponent;
@@ -53,6 +53,8 @@ public:
     const TileMap& getTileMap() const { return m_TileMap; }
     SpriteAtlas& getTileMapAtlas() { return m_TileMapAtlas; }
     SpriteAtlas& getConveyorAtlas() { return m_ConveyorAtlas; }
+    ChunkManager& getChunkManager() { return m_ChunkManager; }
+    const ChunkManager& getChunkManager() const { return m_ChunkManager; }
     ComponentStorage<InventoryComponent>& getInventories() { return m_Inventories; }
     ComponentStorage<MachineInventoryComponent>& getMachineInventories() { return m_MachineInventories; }
     ComponentStorage<CraftingMachineComponent>& getCraftingMachines() { return m_CraftingMachines; }
@@ -64,8 +66,6 @@ public:
     std::vector<std::tuple<int, int, Direction>> getConveyorBeltData() const;
 
 private:
-    static long long makeTileKey(int tileX, int tileY) ;
-
     Camera2D m_Camera;
     Entity m_Player;
     Entity m_Machine;
@@ -74,6 +74,7 @@ private:
     TileMap m_TileMap;
     SpriteAtlas m_TileMapAtlas;
     SpriteAtlas m_ConveyorAtlas;
+    ChunkManager m_ChunkManager;
 
     ItemDatabase m_ItemDatabase;
     SpriteAtlas m_ItemAtlas;
@@ -96,9 +97,9 @@ private:
     ComponentStorage<MachineInventoryComponent> m_MachineInventories;
     ComponentStorage<CraftingMachineComponent> m_CraftingMachines;
     ComponentStorage<InteractionComponent> m_Interactions;
-    std::unordered_map<long long, Entity> m_ConveyorEntitiesByTile;
 
     AnimationLibrary m_AnimationLibrary;
+    ConveyorManager m_ConveyorManager;
 
     AnimatedSprite m_AnimSpr;
     AnimatedSpriteComponent m_Comp;

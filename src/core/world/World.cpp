@@ -7,17 +7,25 @@
 #include "../graphics/AnimationLoader.hpp"
 #include "../graphics/SpriteAtlas.hpp"
 
-World::World() {
+World::World()
+    : m_ConveyorManager(m_EntityManager,
+                        m_Positions,
+                        m_Sprites,
+                        m_Velocities,
+                        m_Inputs,
+                        m_CharacterStates,
+                        m_AnimationControllers,
+                        m_Collisions,
+                        m_ConveyorBelts,
+                        m_Inventories,
+                        m_MachineInventories,
+                        m_CraftingMachines,
+                        m_Interactions,
+                        m_AnimationLibrary) {
 
 }
 
 World::~World() {
-}
-
-long long World::makeTileKey(int tileX, int tileY) {
-    const unsigned long long x = static_cast<unsigned int>(tileX);
-    const unsigned long long y = static_cast<unsigned int>(tileY);
-    return static_cast<long long>((x << 32) | y);
 }
 
 void World::update(float deltaTime) {
@@ -33,26 +41,29 @@ void World::update(float deltaTime) {
 
     auto* playerPos = m_Positions.get(m_Player);
     if (playerPos) {
-        m_Camera.setPosition({playerPos->position.x - (Game::WINDOW_WIDTH / 2), playerPos->position.y - (Game::WINDOW_HEIGHT / 2)});
+        m_ChunkManager.update(playerPos->position, 32);
+        const float halfWidth = static_cast<float>(Game::WINDOW_WIDTH) / (2.0f * m_Camera.getZoom());
+        const float halfHeight = static_cast<float>(Game::WINDOW_HEIGHT) / (2.0f * m_Camera.getZoom());
+        m_Camera.setPosition({playerPos->position.x - halfWidth, playerPos->position.y - halfHeight});
     }
 
 }
 
 void World::render() {
-    m_TileMap.render(m_Renderer, m_Camera);
+    m_TileMap.render(m_Renderer, m_Camera, m_ChunkManager);
 
-    m_RenderSystem.render(m_Renderer, m_Camera, m_Positions, m_Sprites);
-    m_AnimatedRenderSystem.render(m_Renderer, m_Camera, m_Positions, m_AnimationControllers);
+    m_RenderSystem.render(m_Renderer, m_Camera, m_ChunkManager, m_Positions, m_Sprites);
+    m_AnimatedRenderSystem.render(m_Renderer, m_Camera, m_ChunkManager, m_Positions, m_AnimationControllers);
 }
 
 void World::handleInput(SDL_Event &event) {
     m_InputSystem.handleInput(event, m_Inputs, m_Velocities);
 
-    m_InteractionSystem.handleInput(event, m_Player, m_Positions, m_Interactions);
+    m_InteractionSystem.handleInput(event, m_Player, m_Positions, m_Interactions, m_ChunkManager);
 }
 
 std::optional<Entity> World::tryInteract(const SDL_Event &event) {
-    return m_InteractionSystem.handleInput(event, m_Player, m_Positions, m_Interactions);
+    return m_InteractionSystem.handleInput(event, m_Player, m_Positions, m_Interactions, m_ChunkManager);
 }
 
 void World::setRenderer(Renderer *renderer) {
@@ -60,63 +71,19 @@ void World::setRenderer(Renderer *renderer) {
 }
 
 void World::placeConveyorBelt(int tileX, int tileY, Direction direction) {
-    removeConveyorBelt(tileX, tileY);
-
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_MachineInventories, m_CraftingMachines, m_Interactions, m_AnimationLibrary);
-
-    const float worldX = static_cast<float>(tileX * 32);
-    const float worldY = static_cast<float>(tileY * 32);
-    Entity belt = factory.createConveyorBelt({ worldX, worldY }, m_ConveyorAtlas, direction);
-    m_ConveyorEntitiesByTile[makeTileKey(tileX, tileY)] = belt;
+    m_ConveyorManager.placeConveyorBelt(tileX, tileY, direction);
 }
 
 void World::removeConveyorBelt(int tileX, int tileY) {
-    const long long key = makeTileKey(tileX, tileY);
-    auto it = m_ConveyorEntitiesByTile.find(key);
-    if (it == m_ConveyorEntitiesByTile.end()) {
-        return;
-    }
-
-    const Entity belt = it->second;
-    m_Positions.remove(belt);
-    m_Sprites.remove(belt);
-    m_ConveyorBelts.remove(belt);
-    m_Collisions.remove(belt);
-    m_Interactions.remove(belt);
-    m_ConveyorEntitiesByTile.erase(it);
+    m_ConveyorManager.removeConveyorBelt(tileX, tileY);
 }
 
 void World::clearConveyorBelts() {
-    std::vector<std::pair<int, int>> tilesToClear;
-    tilesToClear.reserve(m_ConveyorEntitiesByTile.size());
-
-    for (const auto& [tileKey, entity] : m_ConveyorEntitiesByTile) {
-        const int tileX = static_cast<int>(tileKey >> 32);
-        const int tileY = static_cast<int>(tileKey & 0xffffffff);
-        tilesToClear.emplace_back(tileX, tileY);
-    }
-
-    for (const auto& [tileX, tileY] : tilesToClear) {
-        removeConveyorBelt(tileX, tileY);
-    }
+    m_ConveyorManager.clearConveyorBelts();
 }
 
 std::vector<std::tuple<int, int, Direction>> World::getConveyorBeltData() const {
-    std::vector<std::tuple<int, int, Direction>> conveyors;
-    conveyors.reserve(m_ConveyorEntitiesByTile.size());
-
-    for (const auto& [tileKey, entity] : m_ConveyorEntitiesByTile) {
-        const auto* belt = m_ConveyorBelts.get(entity);
-        if (!belt) {
-            continue;
-        }
-
-        const int tileX = static_cast<int>(tileKey >> 32);
-        const int tileY = static_cast<int>(tileKey & 0xffffffff);
-        conveyors.emplace_back(tileX, tileY, belt->direction);
-    }
-
-    return conveyors;
+    return m_ConveyorManager.getConveyorBeltData();
 }
 
 void World::initializeWorld() {
@@ -139,6 +106,7 @@ void World::initializeWorld() {
     EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_MachineInventories, m_CraftingMachines, m_Interactions, m_AnimationLibrary);
 
     m_Player = factory.createPlayer({ 100.0f, 100.0f });
+    m_ChunkManager.update({100.0f, 100.0f}, 32);
 
     auto* inv = m_Inventories.get(m_Player);
     if (inv) {
@@ -149,6 +117,7 @@ void World::initializeWorld() {
 
     LOG_INFO("Loading conveyor atlas...");
     m_ConveyorAtlas.createAtlas(m_Renderer, 32, 32, "assets/conveyor_sprites.png");
+    m_ConveyorManager.setAtlas(&m_ConveyorAtlas);
 
     LOG_INFO("Creating map...");
     m_TileMapAtlas.createAtlas(m_Renderer, 16, 16, "assets/Overworld_Tileset.png");

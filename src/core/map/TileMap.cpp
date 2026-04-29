@@ -1,4 +1,5 @@
 #include "TileMap.hpp"
+#include "../world/ChunkManager.hpp"
 
 
 void TileMap::setCellSize(int cellWidth, int cellHeight) {
@@ -10,9 +11,9 @@ void TileMap::addLayer(const TileMapLayer &layer) {
     m_Layers.push_back(layer);
 }
 
-void TileMap::render(Renderer *renderer, const Camera2D& camera) {
+void TileMap::render(Renderer *renderer, const Camera2D& camera, const ChunkManager& chunkManager) {
     for (TileMapLayer& layer : m_Layers)
-        layer.render(renderer, camera);
+        layer.render(renderer, camera, chunkManager);
 }
 
 void TileMap::setTile(int x, int y, const Sprite &sprite, int layer, int atlasX, int atlasY, bool isBlocking) {

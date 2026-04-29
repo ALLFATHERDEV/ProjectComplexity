@@ -5,11 +5,13 @@
 
 #include "TileMapLayer.hpp"
 
+class ChunkManager;
+
 class TileMap {
 public:
     void setCellSize(int cellWidth, int cellHeight);
     void addLayer(const TileMapLayer &layer);
-    void render(Renderer* renderer, const Camera2D& camera);
+    void render(Renderer* renderer, const Camera2D& camera, const ChunkManager& chunkManager);
     void setTile(int x, int y, const Sprite &sprite, int layer, int atlasX, int atlasY, bool isBlocking = false);
     void clearTile(int x, int y, int layer);
     bool isTileBlocking(int x, int y, int layer) const;

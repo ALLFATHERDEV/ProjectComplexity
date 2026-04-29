@@ -2,7 +2,7 @@
 
 #include "../../Logger.hpp"
 
-std::optional<Entity> InteractionSystem::handleInput(const SDL_Event &event, Entity player, ComponentStorage<PositionComponent> &positions, ComponentStorage<InteractionComponent> &interactions) {
+std::optional<Entity> InteractionSystem::handleInput(const SDL_Event &event, Entity player, ComponentStorage<PositionComponent> &positions, ComponentStorage<InteractionComponent> &interactions, const ChunkManager& chunkManager) {
     if (event.type != SDL_EVENT_KEY_DOWN)
         return std::nullopt;
     if (event.key.key != SDLK_E)
@@ -22,6 +22,8 @@ std::optional<Entity> InteractionSystem::handleInput(const SDL_Event &event, Ent
 
         auto* entityPosition = positions.get(entity);
         if (!entityPosition)
+            continue;
+        if (!chunkManager.isWorldPositionLoaded(entityPosition->position.x, entityPosition->position.y, 32))
             continue;
 
         auto& interaction = interactionArray[i];

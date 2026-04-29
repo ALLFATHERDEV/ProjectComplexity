@@ -1,6 +1,5 @@
 #include "ConveyorSystem.hpp"
 
-namespace {
 constexpr float kTileSize = 32.0f;
 constexpr float kBlockedProgress = 0.5f;
 
@@ -18,7 +17,6 @@ TileDelta getDelta(Direction direction) {
         case Direction::LEFT:
             return {-1, 0};
         case Direction::RIGHT:
-            return {1, 0};
         default:
             return {1, 0};
     }
@@ -161,7 +159,6 @@ float clampBlockedProgress(float currentProgress, float deltaProgress) {
     const float nextProgress = currentProgress + deltaProgress;
     return nextProgress > kBlockedProgress ? kBlockedProgress : nextProgress;
 }
-}
 
 void ConveyorSystem::update(float deltaTime,
                             EntityManager& entityManager,
@@ -225,7 +222,7 @@ void ConveyorSystem::update(float deltaTime,
             };
 
             positions.add(itemEntity, itemPosition);
-            sprites.add(itemEntity, { beltItem.item->icon });
+            sprites.add(itemEntity, { beltItem.item->icon, 1, 24.0f, 24.0f });
             beltItems.add(itemEntity, beltItem);
             machineInventory->outputInventory.removeItem(beltItem.item, 1);
             break;

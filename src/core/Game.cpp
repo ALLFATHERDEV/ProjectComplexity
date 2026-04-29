@@ -94,6 +94,10 @@ void Game::events() {
             m_TileMapEditor.setEnabled(!m_TileMapEditor.isEnabled());
         }
 
+        if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+            m_World.getCamera().addZoom(event.wheel.y * 0.1f);
+        }
+
         ImGuiIO& io = ImGui::GetIO();
         if (!io.WantCaptureMouse) {
             m_TileMapEditor.update(event, m_World, m_World.getCamera());

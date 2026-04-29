@@ -22,8 +22,8 @@ void TileMapEditor::update(SDL_Event &event, World& world, const Camera2D &camer
     float mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
 
-    float worldX = mouseX + camera.getX();
-    float worldY = mouseY + camera.getY();
+    float worldX = mouseX / camera.getZoom() + camera.getX();
+    float worldY = mouseY / camera.getZoom() + camera.getY();
 
     int tileX = static_cast<int>(worldX) / m_cellWidth;
     int tileY = static_cast<int>(worldY) / m_CellHeight;
@@ -159,11 +159,11 @@ void TileMapEditor::renderConveyorPalette(SpriteAtlas &atlas) {
         const char* label;
     };
 
-    const ConveyorOption options[] = {
-        {Direction::RIGHT, 3, 0, "Right"},
-        {Direction::DOWN, 0, 0, "Down"},
-        {Direction::LEFT, 2, 0, "Left"},
-        {Direction::UP, 1, 0, "Up"}
+    constexpr ConveyorOption options[] = {
+        {Direction::RIGHT, 0, 5, "Right"},
+        {Direction::DOWN, 0, 6, "Down"},
+        {Direction::LEFT, 7, 5, "Left"},
+        {Direction::UP, 2, 6, "Up"}
     };
 
     constexpr float tilePreviewSize = 48.0f;
@@ -189,4 +189,3 @@ void TileMapEditor::renderConveyorPalette(SpriteAtlas &atlas) {
 
     ImGui::End();
 }
-

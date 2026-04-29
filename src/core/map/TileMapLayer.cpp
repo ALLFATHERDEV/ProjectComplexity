@@ -3,6 +3,7 @@
 #include "../Logger.hpp"
 #include "../camera/Camera2D.hpp"
 #include "../graphics/Renderer.hpp"
+#include "../world/ChunkManager.hpp"
 
 class Camera2D;
 
@@ -23,17 +24,32 @@ void TileMapLayer::createLayer(int width, int height, int cellWidth, int cellHei
     }
 }
 
-void TileMapLayer::render(Renderer* renderer, const Camera2D& camera) {
-    for (Tile& tile : m_Tiles)
-        if (tile.shouldRender) {
+void TileMapLayer::render(Renderer* renderer, const Camera2D& camera, const ChunkManager& chunkManager) {
+    const int startX = std::max(0, chunkManager.getLoadedTileMinX());
+    const int startY = std::max(0, chunkManager.getLoadedTileMinY());
+    const int endX = std::min(m_Width - 1, chunkManager.getLoadedTileMaxX());
+    const int endY = std::min(m_Height - 1, chunkManager.getLoadedTileMaxY());
+
+    if (endX < startX || endY < startY) {
+        return;
+    }
+
+    for (int y = startY; y <= endY; y++) {
+        for (int x = startX; x <= endX; x++) {
+            Tile& tile = m_Tiles[y * m_Width + x];
+            if (!tile.shouldRender) {
+                continue;
+            }
+
             SDL_FRect dest{
-                static_cast<float>(tile.x * m_CellWidth) - camera.getX(),
-                static_cast<float>(tile.y * m_CellHeight) - camera.getY(),
-                static_cast<float>(m_CellWidth),
-                static_cast<float>(m_CellHeight)
+                (static_cast<float>(tile.x * m_CellWidth) - camera.getX()) * camera.getZoom(),
+                (static_cast<float>(tile.y * m_CellHeight) - camera.getY()) * camera.getZoom(),
+                static_cast<float>(m_CellWidth) * camera.getZoom(),
+                static_cast<float>(m_CellHeight) * camera.getZoom()
             };
             renderer->drawSprite(tile.sprite, dest);
         }
+    }
 }
 
 void TileMapLayer::setTile(int x, int y, const Sprite &sprite, int atlasX, int atlasY, bool isBlocking) {
