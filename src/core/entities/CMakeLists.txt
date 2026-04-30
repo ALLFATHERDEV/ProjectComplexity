@@ -29,12 +29,16 @@ target_sources(ProjectComplexity PRIVATE
         systems/CollisionSystem.cpp
         systems/CollisionSystem.hpp
         component/InventoryComponent.hpp
+        component/MachineComponent.hpp
         component/MachineInventoryComponent.hpp
         component/CraftingMachineComponent.hpp
+        component/MinerComponent.hpp
         component/ConveyorBeltComponent.hpp
         component/ConveyorItemComponent.hpp
         systems/CraftingSystem.cpp
         systems/CraftingSystem.hpp
+        systems/MiningSystem.cpp
+        systems/MiningSystem.hpp
         systems/ConveyorSystem.cpp
         systems/ConveyorSystem.hpp
         component/InteractionComponent.hpp

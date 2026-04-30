@@ -46,6 +46,10 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_ProgressBar->setSize(460.0f, 24.0f);
     m_ProgressBar->setVisible(false);
 
+    m_MinerInfoText = guiSystem.addElement<GUIText>();
+    m_MinerInfoText->setPosition(410.0f, 200.0f);
+    m_MinerInfoText->setVisible(false);
+
     m_PlayerInventoryPanel = guiSystem.addElement<GUIPanel>();
     m_PlayerInventoryPanel->setPosition(960.0f, 120.0f);
     m_PlayerInventoryPanel->setSize(600.0f, 360.0f);
@@ -74,9 +78,11 @@ void GUIMachine::open(Entity machine) {
     if (!inventory)
         return;
 
+    const bool craftingMachine = isCraftingMachine(machine);
+
     if (m_InputGrid) {
         m_InputGrid->setInventory(&inventory->inputInventory);
-        m_InputGrid->setVisible(true);
+        m_InputGrid->setVisible(craftingMachine);
     }
 
     if (m_FuelGrid) {
@@ -95,6 +101,10 @@ void GUIMachine::open(Entity machine) {
 
     if (m_ProgressBar) {
         m_ProgressBar->setVisible(true);
+    }
+
+    if (m_MinerInfoText) {
+        m_MinerInfoText->setVisible(isMiner(machine));
     }
 
     showPlayerInventory();
@@ -151,6 +161,9 @@ void GUIMachine::close() {
     if (m_ProgressBar)
         m_ProgressBar->setVisible(false);
 
+    if (m_MinerInfoText)
+        m_MinerInfoText->setVisible(false);
+
     hidePlayerInventory();
 
     for (auto* button : m_RecipeButtons) {
@@ -168,12 +181,16 @@ bool GUIMachine::isPlayerInventoryOpen() const {
 
 void GUIMachine::bind(ComponentStorage<MachineInventoryComponent>* machineInventories,
                       ComponentStorage<CraftingMachineComponent>* craftingMachines,
+                      ComponentStorage<MinerComponent>* miners,
                       const RecipeDatabase* recipeDatabase,
+                      const ItemDatabase* itemDatabase,
                       ComponentStorage<InventoryComponent>* inventories,
                       Entity player) {
     m_CraftingMachines = craftingMachines;
+    m_Miners = miners;
     m_MachineInventories = machineInventories;
     m_RecipeDatabase = recipeDatabase;
+    m_ItemDatabase = itemDatabase;
     m_Inventories = inventories;
     m_Player = player;
 }
@@ -205,35 +222,65 @@ void GUIMachine::update() {
     if (m_FuelGrid)
         m_FuelGrid->setInventory(&inventory->fuelInventory);
 
-    if (m_FuelProgressBar && m_CraftingMachines) {
-        auto* machine = m_CraftingMachines->get(m_SelectedMachine);
-        if (machine && machine->requiresFuel) {
-            if (machine->currentFuelCapacity > 0.0f) {
-                m_FuelProgressBar->setValue(machine->fuelRemaining / machine->currentFuelCapacity);
-            } else {
-                m_FuelProgressBar->setValue(0.0f);
+    if (m_FuelProgressBar) {
+        bool showFuelProgress = false;
+
+        if (auto* machine = m_CraftingMachines ? m_CraftingMachines->get(m_SelectedMachine) : nullptr) {
+            if (machine->requiresFuel) {
+                m_FuelProgressBar->setValue(machine->currentFuelCapacity > 0.0f ? machine->fuelRemaining / machine->currentFuelCapacity : 0.0f);
+                showFuelProgress = true;
             }
-            m_FuelProgressBar->setVisible(true);
-        } else {
-            m_FuelProgressBar->setVisible(false);
+        } else if (auto* miner = m_Miners ? m_Miners->get(m_SelectedMachine) : nullptr) {
+            if (miner->requiresFuel) {
+                m_FuelProgressBar->setValue(miner->currentFuelCapacity > 0.0f ? miner->fuelRemaining / miner->currentFuelCapacity : 0.0f);
+                showFuelProgress = true;
+            }
         }
+
+        m_FuelProgressBar->setVisible(showFuelProgress);
     }
 
-    if (m_InputGrid)
+    if (m_InputGrid) {
         m_InputGrid->setInventory(&inventory->inputInventory);
+        m_InputGrid->setVisible(isCraftingMachine(m_SelectedMachine));
+    }
 
     if (m_OutputGrid)
         m_OutputGrid->setInventory(&inventory->outputInventory);
 
-    if (m_ProgressBar && m_CraftingMachines) {
-        auto* machine = m_CraftingMachines->get(m_SelectedMachine);
-        if (machine) {
+    if (m_ProgressBar) {
+        if (auto* machine = m_CraftingMachines ? m_CraftingMachines->get(m_SelectedMachine) : nullptr) {
             const RecipeDefinition* recipe = m_RecipeDatabase->getRecipe(machine->currentRecipeName);
             if (recipe && recipe->craftTime > 0.0f) {
                 m_ProgressBar->setValue(machine->progress / recipe->craftTime);
             } else {
                 m_ProgressBar->setValue(0.0f);
             }
+            m_ProgressBar->setVisible(true);
+        } else if (auto* miner = m_Miners ? m_Miners->get(m_SelectedMachine) : nullptr) {
+            m_ProgressBar->setValue(miner->miningProgress);
+            m_ProgressBar->setVisible(true);
+        } else {
+            m_ProgressBar->setValue(0.0f);
+            m_ProgressBar->setVisible(false);
+        }
+    }
+
+    if (m_MinerInfoText) {
+        if (auto* miner = m_Miners ? m_Miners->get(m_SelectedMachine) : nullptr) {
+            std::string minedItemLabel = "Mining: None";
+            if (!miner->currentMinedItemName.empty()) {
+                if (const ItemDefinition* item = m_ItemDatabase ? m_ItemDatabase->getItem(miner->currentMinedItemName) : nullptr) {
+                    minedItemLabel = "Mining: " + item->displayName;
+                } else {
+                    minedItemLabel = "Mining: " + miner->currentMinedItemName;
+                }
+            }
+
+            m_MinerInfoText->setText(minedItemLabel);
+            m_MinerInfoText->setVisible(true);
+        } else {
+            m_MinerInfoText->setVisible(false);
         }
     }
 
@@ -306,6 +353,14 @@ void GUIMachine::rebuildRecipeButtons(GUISystem &guiSystem) {
 
         m_RecipeButtons.push_back(button);
     }
+}
+
+bool GUIMachine::isCraftingMachine(Entity machine) const {
+    return m_CraftingMachines && m_CraftingMachines->get(machine);
+}
+
+bool GUIMachine::isMiner(Entity machine) const {
+    return m_Miners && m_Miners->get(machine);
 }
 
 void GUIMachine::showPlayerInventory() {

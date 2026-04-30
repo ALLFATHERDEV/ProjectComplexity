@@ -1,6 +1,6 @@
 {
   "paletteName": "Ore Veins",
   "tiles": [
-    { "atlasX": 0, "atlasY": 0, "surfaceTags": ["ore_iron"] }
+    { "atlasX": 0, "atlasY": 0, "surfaceTags": ["ore_iron"], "minedItemName": "iron_ingot" }
   ]
 }

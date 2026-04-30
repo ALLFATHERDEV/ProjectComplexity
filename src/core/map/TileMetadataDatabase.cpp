@@ -13,7 +13,7 @@ std::string TileMetadataDatabase::makeKey(const std::string& paletteName, int at
 }
 
 bool TileMetadataDatabase::loadFromFolder(const std::string& folderPath) {
-    m_SurfaceTagsByTile.clear();
+    m_MetadataByTile.clear();
 
     if (!std::filesystem::exists(folderPath)) {
         LOG_WARN("Tile metadata folder does not exist: {}", folderPath);
@@ -48,28 +48,38 @@ bool TileMetadataDatabase::loadFromFolder(const std::string& folderPath) {
             const int atlasX = tileData.value("atlasX", 0);
             const int atlasY = tileData.value("atlasY", 0);
 
-            std::vector<std::string> surfaceTags;
+            TileMetadata metadata;
             if (tileData.contains("surfaceTags") && tileData["surfaceTags"].is_array()) {
                 for (const auto& tag : tileData["surfaceTags"]) {
                     if (tag.is_string()) {
-                        surfaceTags.push_back(tag.get<std::string>());
+                        metadata.surfaceTags.push_back(tag.get<std::string>());
                     }
                 }
             }
 
-            m_SurfaceTagsByTile[makeKey(paletteName, atlasX, atlasY)] = surfaceTags;
+            metadata.minedItemName = tileData.value("minedItemName", "");
+            m_MetadataByTile[makeKey(paletteName, atlasX, atlasY)] = std::move(metadata);
         }
     }
 
-    LOG_INFO("Loaded {} tile metadata entries from {}", m_SurfaceTagsByTile.size(), folderPath);
+    LOG_INFO("Loaded {} tile metadata entries from {}", m_MetadataByTile.size(), folderPath);
     return true;
 }
 
 const std::vector<std::string>* TileMetadataDatabase::getSurfaceTags(const std::string& paletteName, int atlasX, int atlasY) const {
-    const auto it = m_SurfaceTagsByTile.find(makeKey(paletteName, atlasX, atlasY));
-    if (it == m_SurfaceTagsByTile.end()) {
+    const auto it = m_MetadataByTile.find(makeKey(paletteName, atlasX, atlasY));
+    if (it == m_MetadataByTile.end()) {
         return nullptr;
     }
 
-    return &it->second;
+    return &it->second.surfaceTags;
+}
+
+const std::string* TileMetadataDatabase::getMinedItemName(const std::string& paletteName, int atlasX, int atlasY) const {
+    const auto it = m_MetadataByTile.find(makeKey(paletteName, atlasX, atlasY));
+    if (it == m_MetadataByTile.end() || it->second.minedItemName.empty()) {
+        return nullptr;
+    }
+
+    return &it->second.minedItemName;
 }

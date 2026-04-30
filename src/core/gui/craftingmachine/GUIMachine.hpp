@@ -5,11 +5,14 @@
 #include "../../entities/component/CraftingMachineComponent.hpp"
 #include "../../entities/component/InventoryComponent.hpp"
 #include "../../entities/component/MachineInventoryComponent.hpp"
+#include "../../entities/component/MinerComponent.hpp"
+#include "../../inventory/ItemDatabase.hpp"
 #include "../../recipe/RecipeDatabase.hpp"
 #include "../elements/GUIButton.hpp"
 #include "../elements/GUIInventoryGrid.hpp"
 #include "../elements/GUIPanel.hpp"
 #include "../elements/GUIProgressBar.hpp"
+#include "../elements/GUIText.hpp"
 
 class GUIMachine {
 public:
@@ -24,7 +27,9 @@ public:
 
     void bind(ComponentStorage<MachineInventoryComponent>* machineInventories,
               ComponentStorage<CraftingMachineComponent>* craftingMachines,
+              ComponentStorage<MinerComponent>* miners,
               const RecipeDatabase* recipeDatabase,
+              const ItemDatabase* itemDatabase,
               ComponentStorage<InventoryComponent>* inventories,
               Entity player);
 
@@ -38,9 +43,11 @@ private:
     GUISystem* m_GUISystem = nullptr;
 
     const RecipeDatabase* m_RecipeDatabase = nullptr;
+    const ItemDatabase* m_ItemDatabase = nullptr;
 
     ComponentStorage<MachineInventoryComponent>* m_MachineInventories = nullptr;
     ComponentStorage<CraftingMachineComponent>* m_CraftingMachines = nullptr;
+    ComponentStorage<MinerComponent>* m_Miners = nullptr;
     ComponentStorage<InventoryComponent>* m_Inventories = nullptr;
     Entity m_Player = 0;
 
@@ -50,12 +57,15 @@ private:
     GUIInventoryGrid* m_InputGrid = nullptr;
     GUIInventoryGrid* m_OutputGrid = nullptr;
     GUIProgressBar* m_ProgressBar = nullptr;
+    GUIText* m_MinerInfoText = nullptr;
     GUIPanel* m_PlayerInventoryPanel = nullptr;
     GUIInventoryGrid* m_PlayerInventoryGrid = nullptr;
     std::vector<GUIButton*> m_RecipeButtons;
 
     void showPlayerInventory();
     void hidePlayerInventory();
+    bool isCraftingMachine(Entity machine) const;
+    bool isMiner(Entity machine) const;
     void rebuildRecipeButtons(GUISystem& guiSystem);
     bool canAcceptInputStack(const ItemStack& stack) const;
     bool tryApplyRecipeLayout(const RecipeDefinition& recipe) const;

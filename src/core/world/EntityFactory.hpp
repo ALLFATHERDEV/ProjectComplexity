@@ -10,6 +10,8 @@
 #include "../entities/component/InputComponent.hpp"
 #include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
+#include "../entities/component/MachineComponent.hpp"
+#include "../entities/component/MinerComponent.hpp"
 #include "../entities/component/PositionComponent.hpp"
 #include "../entities/component/SpriteComponent.hpp"
 #include "../entities/component/VelocityComponent.hpp"
@@ -30,8 +32,10 @@ public:
                     ComponentStorage<CollisionComponent>& collisions,
                     ComponentStorage<ConveyorBeltComponent>& conveyorBelts,
                     ComponentStorage<InventoryComponent>& inventories,
+                    ComponentStorage<MachineComponent>& machines,
                     ComponentStorage<MachineInventoryComponent>& machineInventories,
                     ComponentStorage<CraftingMachineComponent>& craftingMachines,
+                    ComponentStorage<MinerComponent>& miners,
                     ComponentStorage<InteractionComponent>& interactions,
                     AnimationLibrary& animationLibrary) :
     m_EntityManager(entityManager),
@@ -44,14 +48,17 @@ public:
     m_Collisions(collisions),
     m_ConveyorBelts(conveyorBelts),
     m_Inventories(inventories),
+    m_Machines(machines),
     m_MachineInventories(machineInventories),
     m_CraftingMachines(craftingMachines),
+    m_Miners(miners),
     m_Interactions(interactions),
     m_AnimationLibrary(animationLibrary) {}
 
-    Entity createPlayer(Vec2f position);
-    Entity createCraftingMachine(Vec2f position, Sprite sprite, const MachineDefinition& machineDefinition);
-    Entity createConveyorBelt(Vec2f position, const SpriteAtlas& atlas, Direction direction);
+    Entity createPlayer(Vec2f position) const;
+    Entity createCraftingMachine(Vec2f position, Sprite sprite, const MachineDefinition& machineDefinition) const;
+    Entity createMiner(Vec2f position, Sprite sprite, const MinerMachineDefinition& machineDefinition) const;
+    Entity createConveyorBelt(Vec2f position, const SpriteAtlas& atlas, Direction direction) const;
 
 private:
     EntityManager& m_EntityManager;
@@ -65,8 +72,10 @@ private:
     ComponentStorage<CollisionComponent>& m_Collisions;
     ComponentStorage<ConveyorBeltComponent>& m_ConveyorBelts;
     ComponentStorage<InventoryComponent>& m_Inventories;
+    ComponentStorage<MachineComponent>& m_Machines;
     ComponentStorage<MachineInventoryComponent>& m_MachineInventories;
     ComponentStorage<CraftingMachineComponent>& m_CraftingMachines;
+    ComponentStorage<MinerComponent>& m_Miners;
     ComponentStorage<InteractionComponent>& m_Interactions;
     AnimationLibrary& m_AnimationLibrary;
 };

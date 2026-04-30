@@ -9,7 +9,9 @@
 #include "../entities/component/InputComponent.hpp"
 #include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
+#include "../entities/component/MachineComponent.hpp"
 #include "../entities/component/MachineInventoryComponent.hpp"
+#include "../entities/component/MinerComponent.hpp"
 #include "../entities/component/PositionComponent.hpp"
 #include "../entities/component/SpriteComponent.hpp"
 #include "../entities/component/VelocityComponent.hpp"
@@ -33,8 +35,10 @@ public:
                     ComponentStorage<CollisionComponent>& collisions,
                     ComponentStorage<ConveyorBeltComponent>& conveyorBelts,
                     ComponentStorage<InventoryComponent>& inventories,
+                    ComponentStorage<MachineComponent>& machines,
                     ComponentStorage<MachineInventoryComponent>& machineInventories,
                     ComponentStorage<CraftingMachineComponent>& craftingMachines,
+                    ComponentStorage<MinerComponent>& miners,
                     ComponentStorage<InteractionComponent>& interactions,
                     AnimationLibrary& animationLibrary);
 
@@ -60,8 +64,10 @@ private:
     ComponentStorage<CollisionComponent>& m_Collisions;
     ComponentStorage<ConveyorBeltComponent>& m_ConveyorBelts;
     ComponentStorage<InventoryComponent>& m_Inventories;
+    ComponentStorage<MachineComponent>& m_Machines;
     ComponentStorage<MachineInventoryComponent>& m_MachineInventories;
     ComponentStorage<CraftingMachineComponent>& m_CraftingMachines;
+    ComponentStorage<MinerComponent>& m_Miners;
     ComponentStorage<InteractionComponent>& m_Interactions;
     AnimationLibrary& m_AnimationLibrary;
     SpriteAtlas* m_ConveyorAtlas = nullptr;

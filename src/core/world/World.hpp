@@ -15,7 +15,9 @@
 #include "../entities/component/CraftingMachineComponent.hpp"
 #include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
+#include "../entities/component/MachineComponent.hpp"
 #include "../entities/component/MachineInventoryComponent.hpp"
+#include "../entities/component/MinerComponent.hpp"
 #include "../entities/component/PositionComponent.hpp"
 #include "../entities/component/SpriteComponent.hpp"
 #include "../entities/systems/AnimatedRenderSystem.hpp"
@@ -29,6 +31,7 @@
 #include "../entities/systems/InteractionSystem.hpp"
 #include "../entities/systems/MovementInputSystem.hpp"
 #include "../entities/systems/MovementSystem.hpp"
+#include "../entities/systems/MiningSystem.hpp"
 #include "../entities/systems/RenderSystem.hpp"
 #include "../graphics/Renderer.hpp"
 #include "../graphics/SpriteAtlas.hpp"
@@ -72,6 +75,7 @@ public:
     ComponentStorage<InventoryComponent>& getInventories() { return m_Inventories; }
     ComponentStorage<MachineInventoryComponent>& getMachineInventories() { return m_MachineInventories; }
     ComponentStorage<CraftingMachineComponent>& getCraftingMachines() { return m_CraftingMachines; }
+    ComponentStorage<MinerComponent>& getMiners() { return m_Miners; }
     const RecipeDatabase& getRecipeDatabase() const { return m_RecipeDatabase; }
     Entity getPlayer() const { return m_Player; }
     Vec2f getPlayerPosition() const;
@@ -123,8 +127,10 @@ private:
     ComponentStorage<ConveyorBeltComponent> m_ConveyorBelts;
     ComponentStorage<ConveyorItemComponent> m_ConveyorItems;
     ComponentStorage<InventoryComponent> m_Inventories;
+    ComponentStorage<MachineComponent> m_MachineEntities;
     ComponentStorage<MachineInventoryComponent> m_MachineInventories;
     ComponentStorage<CraftingMachineComponent> m_CraftingMachines;
+    ComponentStorage<MinerComponent> m_Miners;
     ComponentStorage<InteractionComponent> m_Interactions;
 
     AnimationLibrary m_AnimationLibrary;
@@ -143,6 +149,7 @@ private:
     CollisionSystem m_CollisionSystem;
     ConveyorSystem m_ConveyorSystem;
     CraftingSystem m_CraftingSystem;
+    MiningSystem m_MiningSystem;
     InteractionSystem m_InteractionSystem;
 
 };

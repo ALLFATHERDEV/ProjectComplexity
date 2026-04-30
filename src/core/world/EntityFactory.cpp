@@ -5,7 +5,9 @@
 #include "../entities/component/ConveyorBeltComponent.hpp"
 #include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
+#include "../entities/component/MachineComponent.hpp"
 #include "../entities/component/MachineInventoryComponent.hpp"
+#include "../entities/component/MinerComponent.hpp"
 #include "../graphics/SpriteAtlas.hpp"
 
 Sprite getConveyorSpriteForDirection(const SpriteAtlas& atlas, Direction direction) {
@@ -23,7 +25,7 @@ Sprite getConveyorSpriteForDirection(const SpriteAtlas& atlas, Direction directi
     }
 }
 
-Entity EntityFactory::createPlayer(Vec2f position) {
+Entity EntityFactory::createPlayer(Vec2f position) const {
     Entity player = m_EntityManager.createEntity();
     m_Positions.add(player, { position });
     m_Velocities.add(player, { 0.0f, 0.0f});
@@ -53,7 +55,7 @@ Entity EntityFactory::createPlayer(Vec2f position) {
     return player;
 }
 
-Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite, const MachineDefinition& machineDefinition) {
+Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite, const MachineDefinition& machineDefinition) const {
     Entity machine = m_EntityManager.createEntity();
     const auto width = static_cast<float>(machineDefinition.widthTiles * 32);
     const auto height = static_cast<float>(machineDefinition.heightTiles * 32);
@@ -61,6 +63,7 @@ Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite, const
     m_Positions.add(machine, { position });
     m_Sprites.add(machine, { sprite, 0, width, height });
     m_Collisions.add(machine, { SDL_FRect(0.0f, 0.0f, width, height), true, false });
+    m_Machines.add(machine, { machineDefinition.uniqueName });
 
     MachineInventoryComponent inventory;
     inventory.fuelInventory.create(machineDefinition.fuelWidth, machineDefinition.fuelHeight);
@@ -85,7 +88,38 @@ Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite, const
     return machine;
 }
 
-Entity EntityFactory::createConveyorBelt(Vec2f position, const SpriteAtlas& atlas, Direction direction) {
+Entity EntityFactory::createMiner(Vec2f position, Sprite sprite, const MinerMachineDefinition& machineDefinition) const {
+    Entity miner = m_EntityManager.createEntity();
+    const auto width = static_cast<float>(machineDefinition.widthTiles * 32);
+    const auto height = static_cast<float>(machineDefinition.heightTiles * 32);
+
+    m_Positions.add(miner, { position });
+    m_Sprites.add(miner, { sprite, 0, width, height });
+    m_Collisions.add(miner, { SDL_FRect(0.0f, 0.0f, width, height), true, false });
+    m_Machines.add(miner, { machineDefinition.uniqueName });
+
+    MachineInventoryComponent inventory;
+    inventory.fuelInventory.create(machineDefinition.fuelWidth, machineDefinition.fuelHeight);
+    inventory.outputInventory.create(1, 1);
+    m_MachineInventories.add(miner, inventory);
+
+    MinerComponent minerComponent;
+    minerComponent.machineUniqueName = machineDefinition.uniqueName;
+    minerComponent.requiresFuel = machineDefinition.requiresFuel;
+    minerComponent.miningSpeed = machineDefinition.miningSpeed;
+    minerComponent.widthTiles = machineDefinition.widthTiles;
+    minerComponent.heightTiles = machineDefinition.heightTiles;
+    m_Miners.add(miner, minerComponent);
+
+    InteractionComponent interaction;
+    interaction.interactionName = machineDefinition.displayName.empty() ? "Miner" : machineDefinition.displayName;
+    interaction.interactionBounds = {-8.0f, -8.0f, width + 16.0f, height + 16.0f};
+    m_Interactions.add(miner, interaction);
+
+    return miner;
+}
+
+Entity EntityFactory::createConveyorBelt(Vec2f position, const SpriteAtlas& atlas, Direction direction) const {
     Entity belt = m_EntityManager.createEntity();
 
     Sprite sprite = getConveyorSpriteForDirection(atlas, direction);

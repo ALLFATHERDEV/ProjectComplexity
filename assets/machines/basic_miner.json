@@ -1,0 +1,16 @@
+{
+  "uniqueName": "basic_miner",
+  "displayName": "Basic Miner",
+  "type": "miner",
+  "spriteAtlasX": 1,
+  "spriteAtlasY": 3,
+  "widthTiles": 1,
+  "heightTiles": 1,
+  "requiresFuel": true,
+  "fuelWidth": 1,
+  "fuelHeight": 1,
+  "allowedPlacementTags": [
+    "ore_iron"
+  ],
+  "miningSpeed": 0.5
+}

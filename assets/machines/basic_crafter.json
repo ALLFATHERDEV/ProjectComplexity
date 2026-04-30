@@ -1,6 +1,7 @@
 {
   "uniqueName": "basic_crafter",
   "displayName": "Crafting Machine",
+  "type": "crafting",
   "availableRecipes": [
     "test_recipe",
     "test_recipe2"

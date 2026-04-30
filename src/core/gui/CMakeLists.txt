@@ -9,4 +9,5 @@ target_sources(ProjectComplexity PRIVATE
         GUIDragContext.hpp
         elements/GUIDragPeview.hpp
         elements/GUIButton.hpp
+        elements/GUIText.hpp
 )

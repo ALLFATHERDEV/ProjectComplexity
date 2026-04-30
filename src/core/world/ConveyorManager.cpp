@@ -87,8 +87,10 @@ ConveyorManager::ConveyorManager(EntityManager& entityManager,
                                  ComponentStorage<CollisionComponent>& collisions,
                                  ComponentStorage<ConveyorBeltComponent>& conveyorBelts,
                                  ComponentStorage<InventoryComponent>& inventories,
+                                 ComponentStorage<MachineComponent>& machines,
                                  ComponentStorage<MachineInventoryComponent>& machineInventories,
                                  ComponentStorage<CraftingMachineComponent>& craftingMachines,
+                                 ComponentStorage<MinerComponent>& miners,
                                  ComponentStorage<InteractionComponent>& interactions,
                                  AnimationLibrary& animationLibrary)
     : m_EntityManager(entityManager),
@@ -101,8 +103,10 @@ ConveyorManager::ConveyorManager(EntityManager& entityManager,
       m_Collisions(collisions),
       m_ConveyorBelts(conveyorBelts),
       m_Inventories(inventories),
+      m_Machines(machines),
       m_MachineInventories(machineInventories),
       m_CraftingMachines(craftingMachines),
+      m_Miners(miners),
       m_Interactions(interactions),
       m_AnimationLibrary(animationLibrary) {
 }
@@ -198,7 +202,7 @@ void ConveyorManager::placeConveyorBelt(int tileX, int tileY, Direction directio
 
     removeConveyorBelt(tileX, tileY);
 
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_MachineInventories, m_CraftingMachines, m_Interactions, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_Machines, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
 
     const float worldX = static_cast<float>(tileX) * kTileSize;
     const float worldY = static_cast<float>(tileY) * kTileSize;

@@ -20,8 +20,10 @@ World::World()
                         m_Collisions,
                         m_ConveyorBelts,
                         m_Inventories,
+                        m_MachineEntities,
                         m_MachineInventories,
                         m_CraftingMachines,
+                        m_Miners,
                         m_Interactions,
                         m_AnimationLibrary) {
 
@@ -39,6 +41,7 @@ void World::update(float deltaTime) {
     m_AnimationSystem.update(deltaTime, m_AnimationControllers);
     // m_MovementSystem.update(deltaTime, m_Positions, m_Velocities);
     m_CraftingSystem.update(deltaTime, m_CraftingMachines, m_MachineInventories, m_RecipeDatabase, m_ItemDatabase);
+    m_MiningSystem.update(deltaTime, m_Miners, m_Positions, m_MachineInventories, m_TileMap, m_TileMetadataDatabase, m_ItemDatabase);
     m_ConveyorSystem.update(deltaTime, m_EntityManager, m_Positions, m_Sprites, m_ConveyorBelts, m_ConveyorItems, m_MachineInventories);
 
     auto* playerPos = m_Positions.get(m_Player);
@@ -269,36 +272,56 @@ bool World::placeMachine(const std::string& machineUniqueName, int tileX, int ti
         m_Collisions,
         m_ConveyorBelts,
         m_Inventories,
+        m_MachineEntities,
         m_MachineInventories,
         m_CraftingMachines,
+        m_Miners,
         m_Interactions,
         m_AnimationLibrary
     );
 
-    factory.createCraftingMachine(
-        {static_cast<float>(tileX * 32), static_cast<float>(tileY * 32)},
-        getMachineSprite(*machineDefinition),
-        *machineDefinition
-    );
-    return true;
+    const Vec2f worldPosition{static_cast<float>(tileX * 32), static_cast<float>(tileY * 32)};
+    const Sprite machineSprite = getMachineSprite(*machineDefinition);
+
+    switch (machineDefinition->type) {
+        case MachineType::Crafting:
+            return factory.createCraftingMachine(worldPosition, machineSprite, *machineDefinition) != -1;
+
+        case MachineType::Miner: {
+            const MinerMachineDefinition* minerDefinition =
+                m_MachineDatabase.getMachineAs<MinerMachineDefinition>(machineUniqueName);
+            if (!minerDefinition) {
+                LOG_WARN("Machine {} is marked as miner, but could not be cast to MinerMachineDefinition", machineUniqueName);
+                return false;
+            }
+
+            return factory.createMiner(worldPosition, machineSprite, *minerDefinition) != -1;
+        }
+
+        default:
+            LOG_WARN("Machine {} has unsupported machine type", machineUniqueName);
+            return false;
+    }
 }
 
 void World::clearMachines() {
-    std::vector<Entity> machineEntities = m_CraftingMachines.getEntities();
+    std::vector<Entity> machineEntities = m_MachineEntities.getEntities();
     for (Entity entity : machineEntities) {
         m_Positions.remove(entity);
         m_Sprites.remove(entity);
         m_Collisions.remove(entity);
         m_MachineInventories.remove(entity);
         m_CraftingMachines.remove(entity);
+        m_Miners.remove(entity);
         m_Interactions.remove(entity);
+        m_MachineEntities.remove(entity);
     }
 }
 
 std::vector<std::tuple<std::string, int, int>> World::getMachinePlacementData() const {
     std::vector<std::tuple<std::string, int, int>> machines;
-    const auto& machineComponents = m_CraftingMachines.getRaw();
-    const auto& entities = m_CraftingMachines.getEntities();
+    const auto& machineComponents = m_MachineEntities.getRaw();
+    const auto& entities = m_MachineEntities.getEntities();
 
     for (size_t i = 0; i < machineComponents.size(); i++) {
         const PositionComponent* position = m_Positions.get(entities[i]);
@@ -389,7 +412,7 @@ void World::initializeWorld() {
     m_TileMetadataDatabase.loadFromFolder("assets/tilesets");
 
     LOG_INFO("Creating entities...");
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_MachineInventories, m_CraftingMachines, m_Interactions, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_MachineEntities, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
 
     m_Player = factory.createPlayer({ 30.0f * 32.0f, 14.0f * 32.0f });
     m_ChunkManager.update({100.0f, 100.0f}, 32);
@@ -402,6 +425,7 @@ void World::initializeWorld() {
         inv->inventory.addItem(m_ItemDatabase.getItem("green_gem"), 6);
         inv->inventory.addItem(m_ItemDatabase.getItem("placeable_test"), 3);
         inv->inventory.addItem(m_ItemDatabase.getItem("basic_crafter_item"), 2);
+        inv->inventory.addItem(m_ItemDatabase.getItem("basic_miner_item"), 2);
     }
 
     LOG_INFO("Loading conveyor atlas...");

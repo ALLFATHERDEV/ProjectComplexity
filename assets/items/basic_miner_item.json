@@ -1,0 +1,12 @@
+{
+  "uniqueName": "basic_miner_item",
+  "id": 6,
+  "displayName": "Basic Miner",
+  "maxStackSize": 16,
+  "iconAtlasX": 7,
+  "iconAtlasY": 20,
+  "isPlaceable": true,
+  "placeableBlocking": true,
+  "placeableLayer": 1,
+  "placedMachineUniqueName": "basic_miner"
+}
