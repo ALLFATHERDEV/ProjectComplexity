@@ -3,11 +3,13 @@
 #include <algorithm>
 
 #include "EntityFactory.hpp"
+#include "TileMapGenerator.hpp"
 #include "../Game.hpp"
 #include "../Logger.hpp"
 #include "../editor/TileMapSerializer.hpp"
 #include "../graphics/AnimationLoader.hpp"
 #include "../graphics/SpriteAtlas.hpp"
+
 
 World::World()
     : m_ConveyorManager(m_EntityManager,
@@ -481,11 +483,13 @@ void World::initializeWorld() {
     m_OreVeinsAtlas.createAtlas(m_Renderer, 32, 32, "assets/tilesets/ore_veins.png");
 
     LOG_INFO("Creating map...");
-    m_TileMapAtlas.createAtlas(m_Renderer, 16, 16, "assets/Overworld_Tileset.png");
+    m_TileMapAtlas.createAtlas(m_Renderer, 32, 32, "assets/tilesets/Map_tiles.png");
     m_TilePalettes.clear();
     registerTilePalette("Overworld", &m_TileMapAtlas);
     registerTilePalette("Ore Veins", &m_OreVeinsAtlas);
     TileMapSerializer::load(*this, "maps/test.map");
+    // TileMapGenerator::Config mapGeneratorConfig;
+    // TileMapGenerator::generateTerrain(m_TileMap, m_TileMapAtlas, mapGeneratorConfig);
 
     LOG_INFO("World initialized");
 }

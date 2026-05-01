@@ -161,19 +161,15 @@ bool TileMapSerializer::load(World& world, const std::string &filePath) {
 
         if (type == "LAYERS")
         {
-            // Kannst du erstmal ignorieren
         }
         else if (type == "CONVEYORS")
         {
-            // Count is optional metadata for now.
         }
         else if (type == "PLACEABLES")
         {
-            // Count is optional metadata for now.
         }
         else if (type == "MACHINES")
         {
-            // Count is optional metadata for now.
         }
         else if (type == "LAYER")
         {

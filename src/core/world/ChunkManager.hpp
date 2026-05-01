@@ -22,7 +22,7 @@ private:
     static int floorDiv(int value, int divisor);
 
     int m_ChunkSizeTiles = 32;
-    int m_LoadRadius = 2;
+    int m_LoadRadius = 3;
     int m_CenterChunkX = 0;
     int m_CenterChunkY = 0;
 };
