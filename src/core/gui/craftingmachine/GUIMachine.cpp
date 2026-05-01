@@ -15,6 +15,7 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_FuelGrid->setSlotSize(52.0f);
     m_FuelGrid->setSpacing(6.0f);
     m_FuelGrid->setDragContext(dragContext);
+    m_FuelGrid->setShiftClickFn([this](InventorySlot& slot) { return handleMachineFuelShiftClick(slot); });
     m_FuelGrid->setVisible(false);
 
     m_FuelProgressBar = guiSystem.addElement<GUIProgressBar>();
@@ -32,6 +33,7 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_InputGrid->setAcceptStackFn([this](const ItemStack& stack) {
         return canAcceptInputStack(stack);
     });
+    m_InputGrid->setShiftClickFn([this](InventorySlot& slot) { return handleMachineInputShiftClick(slot); });
     m_InputGrid->setVisible(false);
 
     m_OutputGrid = guiSystem.addElement<GUIInventoryGrid>();
@@ -39,7 +41,16 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_OutputGrid->setSlotSize(52.0f);
     m_OutputGrid->setSpacing(6.0f);
     m_OutputGrid->setDragContext(dragContext);
+    m_OutputGrid->setShiftClickFn([this](InventorySlot& slot) { return handleMachineOutputShiftClick(slot); });
     m_OutputGrid->setVisible(false);
+
+    m_StorageGrid = guiSystem.addElement<GUIInventoryGrid>();
+    m_StorageGrid->setPosition(410.0f, 190.0f);
+    m_StorageGrid->setSlotSize(52.0f);
+    m_StorageGrid->setSpacing(6.0f);
+    m_StorageGrid->setDragContext(dragContext);
+    m_StorageGrid->setShiftClickFn([this](InventorySlot& slot) { return handleStorageShiftClick(slot); });
+    m_StorageGrid->setVisible(false);
 
     m_ProgressBar = guiSystem.addElement<GUIProgressBar>();
     m_ProgressBar->setPosition(410.0f, 330.0f);
@@ -61,6 +72,7 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_PlayerInventoryGrid->setSlotSize(48.0f);
     m_PlayerInventoryGrid->setSpacing(6.0f);
     m_PlayerInventoryGrid->setDragContext(dragContext);
+    m_PlayerInventoryGrid->setShiftClickFn([this](InventorySlot& slot) { return handlePlayerShiftClick(slot); });
     m_PlayerInventoryGrid->setVisible(false);
 }
 
@@ -99,6 +111,10 @@ void GUIMachine::open(Entity machine) {
         m_OutputGrid->setVisible(true);
     }
 
+    if (m_StorageGrid) {
+        m_StorageGrid->setVisible(false);
+    }
+
     if (m_ProgressBar) {
         m_ProgressBar->setVisible(true);
     }
@@ -113,6 +129,51 @@ void GUIMachine::open(Entity machine) {
         rebuildRecipeButtons(*m_GUISystem);
 
     updateRecipeButtons();
+}
+
+void GUIMachine::openStorage(Entity storage) {
+    m_SelectedMachine = storage;
+    m_Open = true;
+
+    if (m_Panel) {
+        m_Panel->setVisible(true);
+    }
+
+    if (m_FuelGrid) {
+        m_FuelGrid->setVisible(false);
+    }
+
+    if (m_FuelProgressBar) {
+        m_FuelProgressBar->setVisible(false);
+    }
+
+    if (m_InputGrid) {
+        m_InputGrid->setVisible(false);
+    }
+
+    if (m_OutputGrid) {
+        m_OutputGrid->setVisible(false);
+    }
+
+    if (m_ProgressBar) {
+        m_ProgressBar->setVisible(false);
+    }
+
+    if (m_MinerInfoText) {
+        m_MinerInfoText->setVisible(false);
+    }
+
+    if (m_StorageGrid) {
+        auto* inventory = m_Inventories ? m_Inventories->get(storage) : nullptr;
+        m_StorageGrid->setInventory(inventory ? &inventory->inventory : nullptr);
+        m_StorageGrid->setVisible(inventory != nullptr);
+    }
+
+    for (auto* button : m_RecipeButtons) {
+        button->setVisible(false);
+    }
+
+    showPlayerInventory();
 }
 
 void GUIMachine::openPlayerInventory() {
@@ -157,6 +218,9 @@ void GUIMachine::close() {
 
     if (m_OutputGrid)
         m_OutputGrid->setVisible(false);
+
+    if (m_StorageGrid)
+        m_StorageGrid->setVisible(false);
 
     if (m_ProgressBar)
         m_ProgressBar->setVisible(false);
@@ -210,7 +274,27 @@ void GUIMachine::update() {
         return;
 
     if (!m_MachineInventories)
+    {
+        if (!isStorageContainer(m_SelectedMachine)) {
+            close();
+        }
         return;
+    }
+
+    if (isStorageContainer(m_SelectedMachine)) {
+        if (m_StorageGrid && m_Inventories) {
+            auto* storageInventory = m_Inventories->get(m_SelectedMachine);
+            if (!storageInventory) {
+                close();
+                return;
+            }
+
+            m_StorageGrid->setInventory(&storageInventory->inventory);
+            m_StorageGrid->setVisible(true);
+        }
+
+        return;
+    }
 
     auto* inventory = m_MachineInventories->get(m_SelectedMachine);
 
@@ -271,9 +355,9 @@ void GUIMachine::update() {
             std::string minedItemLabel = "Mining: None";
             if (!miner->currentMinedItemName.empty()) {
                 if (const ItemDefinition* item = m_ItemDatabase ? m_ItemDatabase->getItem(miner->currentMinedItemName) : nullptr) {
-                    minedItemLabel = "Mining: " + item->displayName;
+                    minedItemLabel = "Mining: " + item->displayName + " (" + miner->currentOrePatchQuality + ")";
                 } else {
-                    minedItemLabel = "Mining: " + miner->currentMinedItemName;
+                    minedItemLabel = "Mining: " + miner->currentMinedItemName + " (" + miner->currentOrePatchQuality + ")";
                 }
             }
 
@@ -363,6 +447,97 @@ bool GUIMachine::isMiner(Entity machine) const {
     return m_Miners && m_Miners->get(machine);
 }
 
+bool GUIMachine::isStorageContainer(Entity entity) const {
+    if (!m_Inventories || entity == m_Player) {
+        return false;
+    }
+
+    return m_Inventories->get(entity) != nullptr &&
+           (!m_MachineInventories || m_MachineInventories->get(entity) == nullptr);
+}
+
+bool GUIMachine::transferSlotToInventory(InventorySlot& sourceSlot,
+                                         InventoryGrid& targetInventory,
+                                         const GUIInventoryGrid::AcceptStackFn* acceptStackFn) const {
+    if (sourceSlot.isEmpty() || !sourceSlot.stack.item) {
+        return false;
+    }
+
+    const ItemDefinition* item = sourceSlot.stack.item;
+    int moved = 0;
+
+    while (sourceSlot.stack.amount > 0) {
+        if (acceptStackFn) {
+            const ItemStack singleItem{item, 1};
+            if (!(*acceptStackFn)(singleItem)) {
+                break;
+            }
+        }
+
+        if (!targetInventory.addItem(item, 1)) {
+            break;
+        }
+
+        sourceSlot.stack.amount--;
+        moved++;
+    }
+
+    if (sourceSlot.stack.amount <= 0) {
+        sourceSlot.stack.clear();
+    }
+
+    return moved > 0;
+}
+
+bool GUIMachine::handlePlayerShiftClick(InventorySlot& sourceSlot) const {
+    if (!m_Open || sourceSlot.isEmpty()) {
+        return false;
+    }
+
+    if (isStorageContainer(m_SelectedMachine)) {
+        auto* storageInventory = m_Inventories ? m_Inventories->get(m_SelectedMachine) : nullptr;
+        return storageInventory && transferSlotToInventory(sourceSlot, storageInventory->inventory);
+    }
+
+    auto* machineInventory = m_MachineInventories ? m_MachineInventories->get(m_SelectedMachine) : nullptr;
+    if (!machineInventory) {
+        return false;
+    }
+
+    if (isCraftingMachine(m_SelectedMachine) && m_InputGrid) {
+        const auto& acceptFn = m_InputGrid->getAcceptStackFn();
+        if (transferSlotToInventory(sourceSlot, machineInventory->inputInventory, acceptFn ? &acceptFn : nullptr)) {
+            return true;
+        }
+    }
+
+    const GUIInventoryGrid::AcceptStackFn fuelAcceptFn = [](const ItemStack& stack) {
+        return !stack.isEmpty() && stack.item && stack.item->fuelValue > 0.0f;
+    };
+
+    return transferSlotToInventory(sourceSlot, machineInventory->fuelInventory, &fuelAcceptFn);
+}
+
+bool GUIMachine::handleMachineInputShiftClick(InventorySlot& sourceSlot) const {
+    auto* playerInventory = m_Inventories ? m_Inventories->get(m_Player) : nullptr;
+    return playerInventory && transferSlotToInventory(sourceSlot, playerInventory->inventory);
+}
+
+bool GUIMachine::handleMachineFuelShiftClick(InventorySlot& sourceSlot) const {
+    auto* playerInventory = m_Inventories ? m_Inventories->get(m_Player) : nullptr;
+    return playerInventory && transferSlotToInventory(sourceSlot, playerInventory->inventory);
+}
+
+bool GUIMachine::handleMachineOutputShiftClick(InventorySlot& sourceSlot) const {
+    auto* playerInventory = m_Inventories ? m_Inventories->get(m_Player) : nullptr;
+    return playerInventory && transferSlotToInventory(sourceSlot, playerInventory->inventory);
+}
+
+bool GUIMachine::handleStorageShiftClick(InventorySlot& sourceSlot) const {
+    auto* playerInventory = m_Inventories ? m_Inventories->get(m_Player) : nullptr;
+    return playerInventory && transferSlotToInventory(sourceSlot, playerInventory->inventory);
+}
+
 void GUIMachine::showPlayerInventory() {
     auto* playerInventory = m_Inventories ? m_Inventories->get(m_Player) : nullptr;
     if (!playerInventory) {
@@ -424,7 +599,7 @@ bool GUIMachine::tryApplyRecipeLayout(const RecipeDefinition& recipe) const {
     }
 
     const int inputSlots = std::max(1, static_cast<int>(recipe.inputs.size()));
-    const int outputSlots = recipe.outputItemName.empty() ? 0 : 1;
+    const int outputSlots = static_cast<int>(recipe.outputs.size());
 
     if (!inventory->inputInventory.resizePreserve(inputSlots, 1)) {
         return false;

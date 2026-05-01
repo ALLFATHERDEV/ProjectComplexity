@@ -8,6 +8,50 @@
 
 using json = nlohmann::json;
 
+OrePatchQuality TileMetadataDatabase::orePatchQualityFromString(const std::string& quality) {
+    if (quality == "impure") {
+        return OrePatchQuality::Impure;
+    }
+
+    if (quality == "pure") {
+        return OrePatchQuality::Pure;
+    }
+
+    if (quality == "perfect") {
+        return OrePatchQuality::Perfect;
+    }
+
+    return OrePatchQuality::Normal;
+}
+
+const char* TileMetadataDatabase::orePatchQualityToString(OrePatchQuality quality) {
+    switch (quality) {
+        case OrePatchQuality::Impure:
+            return "Impure";
+        case OrePatchQuality::Pure:
+            return "Pure";
+        case OrePatchQuality::Perfect:
+            return "Perfect";
+        case OrePatchQuality::Normal:
+        default:
+            return "Normal";
+    }
+}
+
+float TileMetadataDatabase::orePatchQualityToSpeedMultiplier(OrePatchQuality quality) {
+    switch (quality) {
+        case OrePatchQuality::Impure:
+            return 0.5f;
+        case OrePatchQuality::Pure:
+            return 1.5f;
+        case OrePatchQuality::Perfect:
+            return 2.0f;
+        case OrePatchQuality::Normal:
+        default:
+            return 1.0f;
+    }
+}
+
 std::string TileMetadataDatabase::makeKey(const std::string& paletteName, int atlasX, int atlasY) {
     return paletteName + "|" + std::to_string(atlasX) + "|" + std::to_string(atlasY);
 }
@@ -58,6 +102,7 @@ bool TileMetadataDatabase::loadFromFolder(const std::string& folderPath) {
             }
 
             metadata.minedItemName = tileData.value("minedItemName", "");
+            metadata.orePatchQuality = orePatchQualityFromString(tileData.value("orePatchQuality", "normal"));
             m_MetadataByTile[makeKey(paletteName, atlasX, atlasY)] = std::move(metadata);
         }
     }
@@ -82,4 +127,13 @@ const std::string* TileMetadataDatabase::getMinedItemName(const std::string& pal
     }
 
     return &it->second.minedItemName;
+}
+
+OrePatchQuality TileMetadataDatabase::getOrePatchQuality(const std::string& paletteName, int atlasX, int atlasY) const {
+    const auto it = m_MetadataByTile.find(makeKey(paletteName, atlasX, atlasY));
+    if (it == m_MetadataByTile.end()) {
+        return OrePatchQuality::Normal;
+    }
+
+    return it->second.orePatchQuality;
 }

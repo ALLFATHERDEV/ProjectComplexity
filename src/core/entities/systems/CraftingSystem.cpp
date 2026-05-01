@@ -21,7 +21,7 @@ void CraftingSystem::update(float deltaTime, ComponentStorage<CraftingMachineCom
 
 bool CraftingSystem::syncRecipeInventoryLayout(MachineInventoryComponent& inventory, const RecipeDefinition& recipe) {
     const int inputSlots = std::max(1, static_cast<int>(recipe.inputs.size()));
-    const int outputSlots = recipe.outputItemName.empty() ? 0 : 1;
+    const int outputSlots = static_cast<int>(recipe.outputs.size());
 
     if (!inventory.inputInventory.resizePreserve(inputSlots, 1)) {
         return false;
@@ -41,10 +41,7 @@ void CraftingSystem::processMachine(float deltaTime, CraftingMachineComponent &m
         return;
     }
 
-    const ItemDefinition* outputItem = itemDatabase.getItem(recipe.outputItemName);
-    if (!outputItem)
-        return;
-    if (!canOutputFit(inventory, outputItem, recipe.outputAmount)) {
+    if (!canOutputsFit(inventory, recipe, itemDatabase)) {
         machine.isCrafting = false;
         return;
     }
@@ -67,7 +64,7 @@ void CraftingSystem::processMachine(float deltaTime, CraftingMachineComponent &m
 
     if (machine.progress >= recipe.craftTime) {
         consumeIngredient(inventory, recipe, itemDatabase);
-        inventory.outputInventory.addItem(outputItem, recipe.outputAmount);
+        addOutputs(inventory, recipe, itemDatabase);
 
         machine.progress = 0.0f;
         machine.isCrafting = false;
@@ -96,24 +93,32 @@ void CraftingSystem::consumeIngredient(MachineInventoryComponent &inventory, con
     }
 }
 
-bool CraftingSystem::canOutputFit(MachineInventoryComponent &inventory, const ItemDefinition *outputItem, int amount) {
-    InventoryGrid& output = inventory.outputInventory;
-    if (output.getWidth() <= 0 || output.getHeight() <= 0) {
-        return false;
+bool CraftingSystem::canOutputsFit(MachineInventoryComponent& inventory, const RecipeDefinition& recipe, const ItemDatabase& itemDatabase) {
+    InventoryGrid outputCopy = inventory.outputInventory;
+
+    for (const auto& recipeOutput : recipe.outputs) {
+        const ItemDefinition* outputItem = itemDatabase.getItem(recipeOutput.itemName);
+        if (!outputItem) {
+            return false;
+        }
+
+        if (!outputCopy.addItem(outputItem, recipeOutput.amount)) {
+            return false;
+        }
     }
 
-    int remaining = amount;
+    return true;
+}
 
-    for (const auto& slot : output.getSlots()) {
-        if (slot.isEmpty())
-            remaining -= outputItem->maxStackSize;
-        else if (slot.stack.item == outputItem)
-            remaining -= outputItem->maxStackSize - slot.stack.amount;
+void CraftingSystem::addOutputs(MachineInventoryComponent& inventory, const RecipeDefinition& recipe, const ItemDatabase& itemDatabase) {
+    for (const auto& recipeOutput : recipe.outputs) {
+        const ItemDefinition* outputItem = itemDatabase.getItem(recipeOutput.itemName);
+        if (!outputItem) {
+            continue;
+        }
 
-        if (remaining <= 0)
-            return true;
+        inventory.outputInventory.addItem(outputItem, recipeOutput.amount);
     }
-    return false;
 }
 
 bool CraftingSystem::tryConsumeFuel(CraftingMachineComponent& machine, MachineInventoryComponent& inventory) {

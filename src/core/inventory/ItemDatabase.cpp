@@ -62,6 +62,9 @@ bool ItemDatabase::loadItemsFromFolder(const std::string &folderPath, SpriteAtla
         item.placeableBlocking = data.value("placeableBlocking", true);
         item.placeableLayer = data.value("placeableLayer", 1);
         item.placedMachineUniqueName = data.value("placedMachineUniqueName", "");
+        item.placesStorageContainer = data.value("placesStorageContainer", false);
+        item.containerInventoryWidth = std::max(1, data.value("containerInventoryWidth", 4));
+        item.containerInventoryHeight = std::max(1, data.value("containerInventoryHeight", 4));
         item.icon = atlas.getSprite(item.iconAtlasX, item.iconAtlasY);
 
         if (item.uniqueName.empty()) {

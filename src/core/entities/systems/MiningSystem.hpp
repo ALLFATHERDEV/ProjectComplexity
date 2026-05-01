@@ -19,11 +19,12 @@ public:
                 const ItemDatabase& itemDatabase);
 
 private:
-    const ItemDefinition* resolveMinedItem(const MinerComponent& miner,
-                                           const PositionComponent& position,
-                                           const TileMap& tileMap,
-                                           const TileMetadataDatabase& tileMetadataDatabase,
-                                           const ItemDatabase& itemDatabase) const;
+    struct MiningTarget {
+        const ItemDefinition* item = nullptr;
+        OrePatchQuality quality = OrePatchQuality::Normal;
+    };
+
+    MiningTarget resolveMiningTarget(const MinerComponent& miner, const PositionComponent& position, const TileMap& tileMap,const TileMetadataDatabase& tileMetadataDatabase, const ItemDatabase& itemDatabase) const;
     bool canOutputFit(MachineInventoryComponent& inventory, const ItemDefinition* outputItem, int amount) const;
     bool tryConsumeFuel(MinerComponent& miner, MachineInventoryComponent& inventory);
 };

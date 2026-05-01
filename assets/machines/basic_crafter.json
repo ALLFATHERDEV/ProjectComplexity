@@ -4,7 +4,8 @@
   "type": "crafting",
   "availableRecipes": [
     "test_recipe",
-    "test_recipe2"
+    "test_recipe2",
+    "steel"
   ],
   "spriteAtlasX": 0,
   "spriteAtlasY": 3,
@@ -12,8 +13,5 @@
   "heightTiles": 1,
   "requiresFuel": true,
   "fuelWidth": 1,
-  "fuelHeight": 1,
-  "allowedPlacementTags": [
-    "ore_iron"
-  ]
+  "fuelHeight": 1
 }

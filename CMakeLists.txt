@@ -32,6 +32,7 @@ add_library(imgui STATIC
         libs/ImGui/imgui_tables.cpp
         libs/ImGui/imgui_widgets.cpp
         libs/ImGui/imgui_demo.cpp
+        libs/ImGui/misc/cpp/imgui_stdlib.cpp
 
         libs/ImGui/backends/imgui_impl_sdl3.cpp
         libs/ImGui/backends/imgui_impl_sdlrenderer3.cpp
@@ -53,6 +54,7 @@ FetchContent_MakeAvailable(json)
 # ProjectComplexity executable
 add_executable(ProjectComplexity ${SOURCE_FILES})
 add_subdirectory(src/core)
+add_subdirectory(tools/data_editor)
 add_custom_command(TARGET ProjectComplexity POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory  "${CMAKE_SOURCE_DIR}/assets"
         "$<TARGET_FILE_DIR:ProjectComplexity>/assets")
 

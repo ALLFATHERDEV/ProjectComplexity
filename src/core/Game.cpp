@@ -133,6 +133,9 @@ void Game::events() {
             if (interactedEntity.has_value()) {
                 if (m_World.getMachineInventories().get(interactedEntity.value())) {
                     m_MachineGUI.open(interactedEntity.value());
+                } else if (m_World.getInventories().get(interactedEntity.value()) &&
+                           interactedEntity.value() != m_World.getPlayer()) {
+                    m_MachineGUI.openStorage(interactedEntity.value());
                 }
             }
         }

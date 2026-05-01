@@ -1,0 +1,17 @@
+{
+  "craftTime": 7.0,
+  "displayName": "Iron to chest",
+  "inputs": [
+    {
+      "amount": 5,
+      "itemName": "iron_ingot"
+    },
+    {
+      "amount": 3,
+      "itemName": "copper_ingot"
+    }
+  ],
+  "outputAmount": 1,
+  "outputItemName": "test_container_item",
+  "uniqueName": "iron_to_chest"
+}

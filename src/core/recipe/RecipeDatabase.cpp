@@ -37,16 +37,33 @@ bool RecipeDatabase::loadRecipesFromFolder(const std::string& folderPath) {
         RecipeDefinition recipe;
         recipe.uniqueName = data.value("uniqueName", "");
         recipe.displayName = data.value("displayName", "");
-        recipe.outputItemName = data.value("outputItemName", "");
-        recipe.outputAmount = data.value("outputAmount", 1);
         recipe.craftTime = data.value("craftTime", 1.0f);
 
         if (data.contains("inputs") && data["inputs"].is_array()) {
             for (const auto& inputData : data["inputs"]) {
                 RecipeIngredient ingredient;
-                ingredient.itemName = inputData.value("itemName", "");
+                ingredient.itemName = inputData.value("itemName", inputData.value("item_name", ""));
                 ingredient.amount = inputData.value("amount", 1);
                 recipe.inputs.push_back(ingredient);
+            }
+        }
+
+        if (data.contains("outputs") && data["outputs"].is_array()) {
+            for (const auto& outputData : data["outputs"]) {
+                RecipeIngredient output;
+                output.itemName = outputData.value("itemName", outputData.value("item_name", ""));
+                output.amount = outputData.value("amount", 1);
+                if (!output.itemName.empty()) {
+                    recipe.outputs.push_back(output);
+                }
+            }
+        } else {
+            const std::string legacyOutputItemName = data.value("outputItemName", "");
+            if (!legacyOutputItemName.empty()) {
+                RecipeIngredient output;
+                output.itemName = legacyOutputItemName;
+                output.amount = data.value("outputAmount", 1);
+                recipe.outputs.push_back(output);
             }
         }
 
@@ -55,8 +72,8 @@ bool RecipeDatabase::loadRecipesFromFolder(const std::string& folderPath) {
             continue;
         }
 
-        if (recipe.outputItemName.empty()) {
-            LOG_WARN("Recipe {} has no output item, skipping recipe", recipe.uniqueName);
+        if (recipe.outputs.empty()) {
+            LOG_WARN("Recipe {} has no outputs, skipping recipe", recipe.uniqueName);
             continue;
         }
 

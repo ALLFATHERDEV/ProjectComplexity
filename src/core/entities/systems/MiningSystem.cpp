@@ -19,14 +19,17 @@ void MiningSystem::update(float deltaTime,
         }
 
         MinerComponent& miner = minerArray[i];
-        const ItemDefinition* minedItem = resolveMinedItem(miner, *position, tileMap, tileMetadataDatabase, itemDatabase);
+        const MiningTarget target = resolveMiningTarget(miner, *position, tileMap, tileMetadataDatabase, itemDatabase);
+        const ItemDefinition* minedItem = target.item;
         if (!minedItem) {
             miner.currentMinedItemName.clear();
+            miner.currentOrePatchQuality = "Normal";
             miner.isMining = false;
             miner.miningProgress = 0.0f;
             continue;
         }
         miner.currentMinedItemName = minedItem->uniqueName;
+        miner.currentOrePatchQuality = TileMetadataDatabase::orePatchQualityToString(target.quality);
 
         if (!canOutputFit(*inventory, minedItem, 1)) {
             miner.isMining = false;
@@ -41,7 +44,8 @@ void MiningSystem::update(float deltaTime,
         }
 
         miner.isMining = true;
-        miner.miningProgress += deltaTime * miner.miningSpeed;
+        miner.miningProgress += deltaTime * miner.miningSpeed *
+                                TileMetadataDatabase::orePatchQualityToSpeedMultiplier(target.quality);
 
         if (miner.requiresFuel) {
             miner.fuelRemaining -= deltaTime;
@@ -63,11 +67,7 @@ void MiningSystem::update(float deltaTime,
     }
 }
 
-const ItemDefinition* MiningSystem::resolveMinedItem(const MinerComponent& miner,
-                                                     const PositionComponent& position,
-                                                     const TileMap& tileMap,
-                                                     const TileMetadataDatabase& tileMetadataDatabase,
-                                                     const ItemDatabase& itemDatabase) const {
+MiningSystem::MiningTarget MiningSystem::resolveMiningTarget(const MinerComponent& miner, const PositionComponent& position, const TileMap& tileMap, const TileMetadataDatabase& tileMetadataDatabase, const ItemDatabase& itemDatabase) const {
     const int baseTileX = static_cast<int>(position.position.x) / 32;
     const int baseTileY = static_cast<int>(position.position.y) / 32;
 
@@ -90,13 +90,16 @@ const ItemDefinition* MiningSystem::resolveMinedItem(const MinerComponent& miner
 
                 const ItemDefinition* item = itemDatabase.getItem(*minedItemName);
                 if (item) {
-                    return item;
+                    return {
+                        item,
+                        tileMetadataDatabase.getOrePatchQuality(tile->paletteName, tile->atlasX, tile->atlasY)
+                    };
                 }
             }
         }
     }
 
-    return nullptr;
+    return {};
 }
 
 bool MiningSystem::canOutputFit(MachineInventoryComponent& inventory, const ItemDefinition* outputItem, int amount) const {

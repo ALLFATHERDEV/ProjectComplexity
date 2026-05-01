@@ -10,7 +10,8 @@
   "fuelWidth": 1,
   "fuelHeight": 1,
   "allowedPlacementTags": [
-    "ore_iron"
+    "ore_iron",
+    "ore_copper"
   ],
   "miningSpeed": 0.5
 }

@@ -5,6 +5,7 @@
 struct MinerComponent {
     std::string machineUniqueName;
     std::string currentMinedItemName;
+    std::string currentOrePatchQuality = "Normal";
     bool requiresFuel = true;
     float currentFuelCapacity = 0.0f;
     float fuelRemaining = 0.0f;

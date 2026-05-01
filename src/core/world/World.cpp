@@ -42,7 +42,7 @@ void World::update(float deltaTime) {
     // m_MovementSystem.update(deltaTime, m_Positions, m_Velocities);
     m_CraftingSystem.update(deltaTime, m_CraftingMachines, m_MachineInventories, m_RecipeDatabase, m_ItemDatabase);
     m_MiningSystem.update(deltaTime, m_Miners, m_Positions, m_MachineInventories, m_TileMap, m_TileMetadataDatabase, m_ItemDatabase);
-    m_ConveyorSystem.update(deltaTime, m_EntityManager, m_Positions, m_Sprites, m_ConveyorBelts, m_ConveyorItems, m_MachineInventories);
+    m_ConveyorSystem.update(deltaTime, m_EntityManager, m_Player, m_Positions, m_Sprites, m_ConveyorBelts, m_ConveyorItems, m_Inventories, m_MachineInventories);
 
     auto* playerPos = m_Positions.get(m_Player);
     if (playerPos) {
@@ -221,6 +221,21 @@ bool World::canPlaceItem(const ItemDefinition& item, int tileX, int tileY) const
         return !isAreaBlockedByEntity(worldRect);
     }
 
+    if (item.placesStorageContainer) {
+        SDL_FRect worldRect{
+            static_cast<float>(tileX * 32),
+            static_cast<float>(tileY * 32),
+            static_cast<float>(item.placeableWidthTiles * 32),
+            static_cast<float>(item.placeableHeightTiles * 32)
+        };
+
+        if (m_TileMap.isRectColliding(worldRect)) {
+            return false;
+        }
+
+        return !isAreaBlockedByEntity(worldRect);
+    }
+
     if (!item.placeableSprite.texture) {
         return false;
     }
@@ -235,6 +250,35 @@ bool World::placeItem(const ItemDefinition& item, int tileX, int tileY) {
 
     if (!item.placedMachineUniqueName.empty()) {
         return placeMachine(item.placedMachineUniqueName, tileX, tileY);
+    }
+
+    if (item.placesStorageContainer) {
+        EntityFactory factory(
+            m_EntityManager,
+            m_Positions,
+            m_Velocities,
+            m_Inputs,
+            m_CharacterStates,
+            m_AnimationControllers,
+            m_Sprites,
+            m_Collisions,
+            m_ConveyorBelts,
+            m_Inventories,
+            m_MachineEntities,
+            m_MachineInventories,
+            m_CraftingMachines,
+            m_Miners,
+            m_Interactions,
+            m_AnimationLibrary
+        );
+
+        return factory.createStorageContainer(
+            {static_cast<float>(tileX * 32), static_cast<float>(tileY * 32)},
+            item.placeableSprite,
+            {item.containerInventoryWidth, item.containerInventoryHeight},
+            {item.placeableWidthTiles, item.placeableHeightTiles},
+            item.placeableBlocking
+        ) != -1;
     }
 
     return m_TileMap.setTileObject(tileX, tileY, item.placeableSprite, item.placeableLayer, item.placeableWidthTiles, item.placeableHeightTiles, item.placeableBlocking, item.uniqueName);
@@ -426,6 +470,8 @@ void World::initializeWorld() {
         inv->inventory.addItem(m_ItemDatabase.getItem("placeable_test"), 3);
         inv->inventory.addItem(m_ItemDatabase.getItem("basic_crafter_item"), 2);
         inv->inventory.addItem(m_ItemDatabase.getItem("basic_miner_item"), 2);
+        inv->inventory.addItem(m_ItemDatabase.getItem("test_container_item"), 2);
+        inv->inventory.addItem(m_ItemDatabase.getItem("steel_ingot"), 3);
     }
 
     LOG_INFO("Loading conveyor atlas...");

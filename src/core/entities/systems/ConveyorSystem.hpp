@@ -4,6 +4,7 @@
 #include "../EntityManager.hpp"
 #include "../component/ConveyorBeltComponent.hpp"
 #include "../component/ConveyorItemComponent.hpp"
+#include "../component/InventoryComponent.hpp"
 #include "../component/MachineInventoryComponent.hpp"
 #include "../component/PositionComponent.hpp"
 #include "../component/SpriteComponent.hpp"
@@ -13,9 +14,11 @@ class ConveyorSystem {
 public:
     void update(float deltaTime,
                 EntityManager& entityManager,
+                Entity playerEntity,
                 ComponentStorage<PositionComponent>& positions,
                 ComponentStorage<SpriteComponent>& sprites,
                 ComponentStorage<ConveyorBeltComponent>& belts,
                 ComponentStorage<ConveyorItemComponent>& beltItems,
+                ComponentStorage<InventoryComponent>& inventories,
                 ComponentStorage<MachineInventoryComponent>& machineInventories);
 };

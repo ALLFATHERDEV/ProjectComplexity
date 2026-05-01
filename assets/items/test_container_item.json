@@ -1,0 +1,17 @@
+{
+  "uniqueName": "test_container_item",
+  "id": 7,
+  "displayName": "Test Container",
+  "maxStackSize": 1,
+  "iconAtlasX": 7,
+  "iconAtlasY": 85,
+  "isPlaceable": true,
+  "placeableTexturePath": "assets/Sprite-0002.png",
+  "placeableWidthTiles": 1,
+  "placeableHeightTiles": 1,
+  "placeableBlocking": true,
+  "placeableLayer": 1,
+  "placesStorageContainer": true,
+  "containerInventoryWidth": 4,
+  "containerInventoryHeight": 4
+}

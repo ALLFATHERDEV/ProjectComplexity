@@ -21,6 +21,9 @@ struct ItemDefinition {
     bool placeableBlocking = true;
     int placeableLayer = 1;
     std::string placedMachineUniqueName;
+    bool placesStorageContainer = false;
+    int containerInventoryWidth = 4;
+    int containerInventoryHeight = 4;
 
     Sprite icon;
     Sprite placeableSprite;

@@ -14,6 +14,7 @@ private:
     void processMachine(float deltaTime, CraftingMachineComponent& machine, MachineInventoryComponent& inventory, const RecipeDefinition& recipe, const ItemDatabase& itemDatabase);
     bool hasIngredients(MachineInventoryComponent& inventory, const RecipeDefinition& recipe, const ItemDatabase& itemDatabase);
     void consumeIngredient(MachineInventoryComponent& inventory, const RecipeDefinition& recipe, const ItemDatabase& itemDatabase);
-    bool canOutputFit(MachineInventoryComponent& inventory, const ItemDefinition* outputItem, int amount);
+    bool canOutputsFit(MachineInventoryComponent& inventory, const RecipeDefinition& recipe, const ItemDatabase& itemDatabase);
+    void addOutputs(MachineInventoryComponent& inventory, const RecipeDefinition& recipe, const ItemDatabase& itemDatabase);
     bool tryConsumeFuel(CraftingMachineComponent& machine, MachineInventoryComponent& inventory);
 };

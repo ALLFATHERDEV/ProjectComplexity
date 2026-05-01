@@ -8,6 +8,7 @@
 class GUIInventoryGrid : public GUIElement {
 public:
     using AcceptStackFn = std::function<bool(const ItemStack&)>;
+    using ShiftClickFn = std::function<bool(InventorySlot&)>;
 
     void setInventory(InventoryGrid* inventory) {
         m_Inventory = inventory;
@@ -35,6 +36,13 @@ public:
             return;
 
         if (event.button.button == SDL_BUTTON_LEFT) {
+            const SDL_Keymod modifiers = SDL_GetModState();
+            if ((modifiers & SDL_KMOD_SHIFT) != 0 && !m_DragContext->isDragging && !clickedSlot->isEmpty()) {
+                if (m_ShiftClickFn && m_ShiftClickFn(*clickedSlot)) {
+                    return;
+                }
+            }
+
             handleLeftClick(clickedSlot);
             return;
         }
@@ -91,6 +99,14 @@ public:
 
     void setAcceptStackFn(AcceptStackFn acceptStackFn) {
         m_AcceptStackFn = std::move(acceptStackFn);
+    }
+
+    void setShiftClickFn(ShiftClickFn shiftClickFn) {
+        m_ShiftClickFn = std::move(shiftClickFn);
+    }
+
+    const AcceptStackFn& getAcceptStackFn() const {
+        return m_AcceptStackFn;
     }
 
 private:
@@ -165,8 +181,9 @@ private:
         }
     }
 
+
     void handleLeftClick(InventorySlot* clickedSlot) {
-        if (!m_DragContext)
+        if (!m_DragContext) 
             return;
 
         if (!m_DragContext->isDragging && clickedSlot->isEmpty())
@@ -208,7 +225,6 @@ private:
         }
 
         std::swap(clickedSlot->stack, m_DragContext->draggedStack);
-
     }
 
     void handleRightClick(InventorySlot* clickedSlot) {
@@ -287,4 +303,5 @@ private:
 
     GUIDragContext* m_DragContext = nullptr;
     AcceptStackFn m_AcceptStackFn;
+    ShiftClickFn m_ShiftClickFn;
 };

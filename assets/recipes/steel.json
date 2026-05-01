@@ -1,0 +1,25 @@
+{
+  "craftTime": 7.0,
+  "displayName": "Steel",
+  "inputs": [
+    {
+      "amount": 3,
+      "itemName": "steel_ingot"
+    },
+    {
+      "amount": 3,
+      "itemName": "iron_ingot"
+    }
+  ],
+  "outputs": [
+    {
+      "itemName": "copper_ingot",
+      "amount": 2
+    },
+    {
+      "itemName": "placeable_test",
+      "amount": 1
+    }
+  ],
+  "uniqueName": "steel"
+}

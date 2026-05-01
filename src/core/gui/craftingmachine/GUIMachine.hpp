@@ -19,6 +19,7 @@ public:
     void create(GUISystem& guiSystem, GUIDragContext* dragContext);
 
     void open(Entity machine);
+    void openStorage(Entity storage);
     void openPlayerInventory();
     void togglePlayerInventory();
     void close();
@@ -56,6 +57,7 @@ private:
     GUIProgressBar* m_FuelProgressBar = nullptr;
     GUIInventoryGrid* m_InputGrid = nullptr;
     GUIInventoryGrid* m_OutputGrid = nullptr;
+    GUIInventoryGrid* m_StorageGrid = nullptr;
     GUIProgressBar* m_ProgressBar = nullptr;
     GUIText* m_MinerInfoText = nullptr;
     GUIPanel* m_PlayerInventoryPanel = nullptr;
@@ -66,6 +68,15 @@ private:
     void hidePlayerInventory();
     bool isCraftingMachine(Entity machine) const;
     bool isMiner(Entity machine) const;
+    bool isStorageContainer(Entity entity) const;
+    bool transferSlotToInventory(InventorySlot& sourceSlot,
+                                 InventoryGrid& targetInventory,
+                                 const GUIInventoryGrid::AcceptStackFn* acceptStackFn = nullptr) const;
+    bool handlePlayerShiftClick(InventorySlot& sourceSlot) const;
+    bool handleMachineInputShiftClick(InventorySlot& sourceSlot) const;
+    bool handleMachineFuelShiftClick(InventorySlot& sourceSlot) const;
+    bool handleMachineOutputShiftClick(InventorySlot& sourceSlot) const;
+    bool handleStorageShiftClick(InventorySlot& sourceSlot) const;
     void rebuildRecipeButtons(GUISystem& guiSystem);
     bool canAcceptInputStack(const ItemStack& stack) const;
     bool tryApplyRecipeLayout(const RecipeDefinition& recipe) const;

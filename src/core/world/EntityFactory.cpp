@@ -130,3 +130,22 @@ Entity EntityFactory::createConveyorBelt(Vec2f position, const SpriteAtlas& atla
 
     return belt;
 }
+
+Entity EntityFactory::createStorageContainer(Vec2f position, Sprite sprite, Vec2i containerInventorySize, Vec2i sizeTiles, bool isBlocking) const {
+    Entity container = m_EntityManager.createEntity();
+    const float width = static_cast<float>(sizeTiles.x * 32);
+    const float height = static_cast<float>(sizeTiles.y * 32);
+    m_Positions.add(container, { position });
+    m_Sprites.add(container, { sprite, 0, width, height });
+    m_Collisions.add(container, { SDL_FRect(0.0f, 0.0f, width, height), isBlocking, false });
+
+    InventoryComponent inventory;
+    inventory.inventory.create(containerInventorySize.x, containerInventorySize.y);
+    m_Inventories.add(container, inventory);
+
+    InteractionComponent interaction;
+    interaction.interactionName = "Storage Container";
+    interaction.interactionBounds = {-8.0f, -8.0f, width + 16.0f, height + 16.0f};
+    m_Interactions.add(container, interaction);
+    return container;
+}

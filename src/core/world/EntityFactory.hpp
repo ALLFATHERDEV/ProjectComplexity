@@ -59,6 +59,7 @@ public:
     Entity createCraftingMachine(Vec2f position, Sprite sprite, const MachineDefinition& machineDefinition) const;
     Entity createMiner(Vec2f position, Sprite sprite, const MinerMachineDefinition& machineDefinition) const;
     Entity createConveyorBelt(Vec2f position, const SpriteAtlas& atlas, Direction direction) const;
+    Entity createStorageContainer(Vec2f position, Sprite sprite, Vec2i containerInventorySize, Vec2i sizeTiles, bool isBlocking) const;
 
 private:
     EntityManager& m_EntityManager;

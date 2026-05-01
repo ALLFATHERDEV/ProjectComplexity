@@ -89,6 +89,24 @@ Entity findMachineAtTile(ComponentStorage<MachineInventoryComponent>& machines,
     return 0;
 }
 
+Entity findStorageAtTile(ComponentStorage<InventoryComponent>& inventories,
+                         ComponentStorage<PositionComponent>& positions,
+                         int tileX,
+                         int tileY,
+                         Entity ignoredEntity) {
+    for (Entity entity : inventories.getEntities()) {
+        if (entity == ignoredEntity) {
+            continue;
+        }
+
+        if (isEntityAtTile(positions.get(entity), tileX, tileY)) {
+            return entity;
+        }
+    }
+
+    return 0;
+}
+
 bool isBeltItemOccupyingTile(ComponentStorage<ConveyorItemComponent>& beltItems,
                              int tileX,
                              int tileY,
@@ -130,6 +148,8 @@ bool canItemMoveForward(const ConveyorItemComponent& item,
                         ComponentStorage<PositionComponent>& positions,
                         ComponentStorage<ConveyorBeltComponent>& belts,
                         ComponentStorage<ConveyorItemComponent>& beltItems,
+                        ComponentStorage<InventoryComponent>& inventories,
+                        Entity playerEntity,
                         ComponentStorage<MachineInventoryComponent>& machineInventories) {
     const TileDelta delta = getDelta(item.direction);
     const int nextTileX = item.tileX + delta.x;
@@ -139,6 +159,14 @@ bool canItemMoveForward(const ConveyorItemComponent& item,
     if (machineEntity != 0) {
         auto* machineInventory = machineInventories.get(machineEntity);
         if (machineInventory && canAcceptSingleItem(machineInventory->inputInventory, item.item)) {
+            return true;
+        }
+    }
+
+    Entity storageEntity = findStorageAtTile(inventories, positions, nextTileX, nextTileY, playerEntity);
+    if (storageEntity != 0) {
+        auto* storageInventory = inventories.get(storageEntity);
+        if (storageInventory && canAcceptSingleItem(storageInventory->inventory, item.item)) {
             return true;
         }
     }
@@ -162,10 +190,12 @@ float clampBlockedProgress(float currentProgress, float deltaProgress) {
 
 void ConveyorSystem::update(float deltaTime,
                             EntityManager& entityManager,
+                            Entity playerEntity,
                             ComponentStorage<PositionComponent>& positions,
                             ComponentStorage<SpriteComponent>& sprites,
                             ComponentStorage<ConveyorBeltComponent>& belts,
                             ComponentStorage<ConveyorItemComponent>& beltItems,
+                            ComponentStorage<InventoryComponent>& inventories,
                             ComponentStorage<MachineInventoryComponent>& machineInventories) {
     for (Entity machineEntity : machineInventories.getEntities()) {
         auto* machinePosition = positions.get(machineEntity);
@@ -229,6 +259,72 @@ void ConveyorSystem::update(float deltaTime,
         }
     }
 
+    for (Entity storageEntity : inventories.getEntities()) {
+        if (storageEntity == playerEntity) {
+            continue;
+        }
+
+        auto* storagePosition = positions.get(storageEntity);
+        auto* storageInventory = inventories.get(storageEntity);
+        if (!storagePosition || !storageInventory) {
+            continue;
+        }
+
+        InventorySlot* outputSlot = getFirstOccupiedSlot(storageInventory->inventory);
+        if (!outputSlot || outputSlot->isEmpty()) {
+            continue;
+        }
+
+        const int storageTileX = static_cast<int>(storagePosition->position.x / kTileSize);
+        const int storageTileY = static_cast<int>(storagePosition->position.y / kTileSize);
+
+        constexpr Direction candidateDirections[] = {
+            Direction::RIGHT,
+            Direction::DOWN,
+            Direction::LEFT,
+            Direction::UP
+        };
+
+        for (Direction direction : candidateDirections) {
+            const TileDelta delta = getDelta(direction);
+            const int targetTileX = storageTileX + delta.x;
+            const int targetTileY = storageTileY + delta.y;
+
+            Entity beltEntity = findBeltAtTile(belts, positions, targetTileX, targetTileY);
+            if (beltEntity == 0) {
+                continue;
+            }
+
+            auto* belt = belts.get(beltEntity);
+            if (!belt || belt->direction != direction) {
+                continue;
+            }
+
+            if (isBeltItemOccupyingTile(beltItems, targetTileX, targetTileY)) {
+                continue;
+            }
+
+            Entity itemEntity = entityManager.createEntity();
+            ConveyorItemComponent beltItem;
+            beltItem.item = outputSlot->stack.item;
+            beltItem.tileX = targetTileX;
+            beltItem.tileY = targetTileY;
+            beltItem.direction = belt->direction;
+
+            PositionComponent itemPosition{};
+            itemPosition.position = {
+                static_cast<float>(targetTileX) * kTileSize,
+                static_cast<float>(targetTileY) * kTileSize
+            };
+
+            positions.add(itemEntity, itemPosition);
+            sprites.add(itemEntity, { beltItem.item->icon, 1, 24.0f, 24.0f, true });
+            beltItems.add(itemEntity, beltItem);
+            storageInventory->inventory.removeItem(beltItem.item, 1);
+            break;
+        }
+    }
+
     size_t index = 0;
     while (index < beltItems.getRaw().size()) {
         auto& items = beltItems.getRaw();
@@ -243,7 +339,7 @@ void ConveyorSystem::update(float deltaTime,
         }
 
         if (item.blocked) {
-            if (!canItemMoveForward(item, positions, belts, beltItems, machineInventories)) {
+            if (!canItemMoveForward(item, positions, belts, beltItems, inventories, playerEntity, machineInventories)) {
                 item.progress = kBlockedProgress;
                 updateItemPosition(*position, item);
                 index++;
@@ -254,7 +350,7 @@ void ConveyorSystem::update(float deltaTime,
         }
 
         const float deltaProgress = deltaTime * item.speed;
-        if (!canItemMoveForward(item, positions, belts, beltItems, machineInventories) &&
+        if (!canItemMoveForward(item, positions, belts, beltItems, inventories, playerEntity, machineInventories) &&
             item.progress < kBlockedProgress) {
             item.progress = clampBlockedProgress(item.progress, deltaProgress);
             item.blocked = item.progress >= kBlockedProgress;
@@ -275,6 +371,16 @@ void ConveyorSystem::update(float deltaTime,
             if (machineEntity != 0) {
                 auto* machineInventory = machineInventories.get(machineEntity);
                 if (machineInventory && machineInventory->inputInventory.addItem(item.item, 1)) {
+                    destroyBeltItem(entity, positions, sprites, beltItems);
+                    wasRemoved = true;
+                    break;
+                }
+            }
+
+            Entity storageEntity = findStorageAtTile(inventories, positions, nextTileX, nextTileY, playerEntity);
+            if (storageEntity != 0) {
+                auto* storageInventory = inventories.get(storageEntity);
+                if (storageInventory && storageInventory->inventory.addItem(item.item, 1)) {
                     destroyBeltItem(entity, positions, sprites, beltItems);
                     wasRemoved = true;
                     break;
