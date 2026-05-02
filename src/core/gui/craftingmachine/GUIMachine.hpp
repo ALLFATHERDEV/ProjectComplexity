@@ -69,9 +69,7 @@ private:
     bool isCraftingMachine(Entity machine) const;
     bool isMiner(Entity machine) const;
     bool isStorageContainer(Entity entity) const;
-    bool transferSlotToInventory(InventorySlot& sourceSlot,
-                                 InventoryGrid& targetInventory,
-                                 const GUIInventoryGrid::AcceptStackFn* acceptStackFn = nullptr) const;
+    bool transferSlotToInventory(InventorySlot& sourceSlot, InventoryGrid& targetInventory, const GUIInventoryGrid::AcceptStackFn* acceptStackFn = nullptr) const;
     bool handlePlayerShiftClick(InventorySlot& sourceSlot) const;
     bool handleMachineInputShiftClick(InventorySlot& sourceSlot) const;
     bool handleMachineFuelShiftClick(InventorySlot& sourceSlot) const;
@@ -79,5 +77,12 @@ private:
     bool handleStorageShiftClick(InventorySlot& sourceSlot) const;
     void rebuildRecipeButtons(GUISystem& guiSystem);
     bool canAcceptInputStack(const ItemStack& stack) const;
+    bool canAcceptInputStackAtSlot(int slotX, int slotY, const ItemStack& stack) const;
+    const RecipeDefinition* getSelectedRecipe() const;
+    const ItemDefinition* getInputSlotBackgroundItem(int slotX, int slotY) const;
+    bool transferSlotToReservedRecipeInputs(InventorySlot& sourceSlot, InventoryGrid& targetInventory) const;
     bool tryApplyRecipeLayout(const RecipeDefinition& recipe) const;
+    const ItemDefinition* getOutputSlotBackgroundItem(int slotX, int slotY) const;
+    bool canAcceptOutputStack(const ItemStack& stack) const;
+    bool canAcceptOutputStackAtSlot(int slotX, int slotY, const ItemStack& stack) const;
 };

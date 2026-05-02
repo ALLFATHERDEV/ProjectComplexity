@@ -30,9 +30,9 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_InputGrid->setSlotSize(52.0f);
     m_InputGrid->setSpacing(6.0f);
     m_InputGrid->setDragContext(dragContext);
-    m_InputGrid->setAcceptStackFn([this](const ItemStack& stack) {
-        return canAcceptInputStack(stack);
-    });
+    m_InputGrid->setAcceptStackFn([this](const ItemStack& stack) { return canAcceptInputStack(stack); });
+    m_InputGrid->setAcceptStackAtSlotFn([this](int slotX, int slotY, const ItemStack& stack) { return canAcceptInputStackAtSlot(slotX, slotY, stack); });
+    m_InputGrid->setSlotBackgroundItemFn([this](int slotX, int slotY) { return getInputSlotBackgroundItem(slotX, slotY); });
     m_InputGrid->setShiftClickFn([this](InventorySlot& slot) { return handleMachineInputShiftClick(slot); });
     m_InputGrid->setVisible(false);
 
@@ -41,6 +41,9 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_OutputGrid->setSlotSize(52.0f);
     m_OutputGrid->setSpacing(6.0f);
     m_OutputGrid->setDragContext(dragContext);
+    m_OutputGrid->setAcceptStackFn([this](const ItemStack& stack) { return canAcceptOutputStack(stack); });
+    m_OutputGrid->setAcceptStackAtSlotFn([this](int slotX, int slotY, const ItemStack& stack) { return canAcceptOutputStackAtSlot(slotX, slotY, stack); });
+    m_OutputGrid->setSlotBackgroundItemFn([this](int slotX, int slotY) { return getOutputSlotBackgroundItem(slotX, slotY); });
     m_OutputGrid->setShiftClickFn([this](InventorySlot& slot) { return handleMachineOutputShiftClick(slot); });
     m_OutputGrid->setVisible(false);
 
@@ -489,13 +492,63 @@ bool GUIMachine::transferSlotToInventory(InventorySlot& sourceSlot,
     return moved > 0;
 }
 
+bool GUIMachine::transferSlotToReservedRecipeInputs(InventorySlot& sourceSlot, InventoryGrid& targetInventory) const {
+    if (sourceSlot.isEmpty() || !sourceSlot.stack.item) {
+        return false;
+    }
+
+    const RecipeDefinition* recipe = getSelectedRecipe();
+    if (!recipe) {
+        return false;
+    }
+
+    int moved = 0;
+    for (size_t i = 0; i < recipe->inputs.size() && sourceSlot.stack.amount > 0; i++) {
+        const auto& ingredient = recipe->inputs[i];
+        if (ingredient.itemName != sourceSlot.stack.item->uniqueName) {
+            continue;
+        }
+
+        InventorySlot* targetSlot = targetInventory.getSlot(static_cast<int>(i), 0);
+        if (!targetSlot) {
+            continue;
+        }
+
+        if (targetSlot->isEmpty()) {
+            targetSlot->stack.item = sourceSlot.stack.item;
+            targetSlot->stack.amount = sourceSlot.stack.amount;
+            sourceSlot.stack.amount = 0;
+            moved++;
+            continue;
+        }
+
+        if (targetSlot->stack.item != sourceSlot.stack.item) {
+            continue;
+        }
+
+        if (targetSlot->stack.amount >= targetSlot->stack.item->maxStackSize) {
+            continue;
+        }
+
+        targetSlot->stack.amount++;
+        sourceSlot.stack.amount--;
+        moved++;
+    }
+
+    if (sourceSlot.stack.amount <= 0) {
+        sourceSlot.stack.clear();
+    }
+
+    return moved > 0;
+}
+
 bool GUIMachine::handlePlayerShiftClick(InventorySlot& sourceSlot) const {
     if (!m_Open || sourceSlot.isEmpty()) {
         return false;
     }
 
     if (isStorageContainer(m_SelectedMachine)) {
-        auto* storageInventory = m_Inventories ? m_Inventories->get(m_SelectedMachine) : nullptr;
+        auto* storageInventory = m_Inventories->get(m_SelectedMachine);
         return storageInventory && transferSlotToInventory(sourceSlot, storageInventory->inventory);
     }
 
@@ -504,9 +557,8 @@ bool GUIMachine::handlePlayerShiftClick(InventorySlot& sourceSlot) const {
         return false;
     }
 
-    if (isCraftingMachine(m_SelectedMachine) && m_InputGrid) {
-        const auto& acceptFn = m_InputGrid->getAcceptStackFn();
-        if (transferSlotToInventory(sourceSlot, machineInventory->inputInventory, acceptFn ? &acceptFn : nullptr)) {
+    if (isCraftingMachine(m_SelectedMachine)) {
+        if (transferSlotToReservedRecipeInputs(sourceSlot, machineInventory->inputInventory)) {
             return true;
         }
     }
@@ -588,6 +640,53 @@ bool GUIMachine::canAcceptInputStack(const ItemStack& stack) const {
     return false;
 }
 
+bool GUIMachine::canAcceptInputStackAtSlot(int slotX, int slotY, const ItemStack& stack) const {
+    if (slotY != 0 || slotX < 0 || stack.isEmpty() || !stack.item) {
+        return false;
+    }
+
+    const RecipeDefinition* recipe = getSelectedRecipe();
+    if (!recipe) {
+        return false;
+    }
+
+    if (slotX >= static_cast<int>(recipe->inputs.size())) {
+        return false;
+    }
+
+    return recipe->inputs[slotX].itemName == stack.item->uniqueName;
+}
+
+const RecipeDefinition* GUIMachine::getSelectedRecipe() const {
+    if (!m_CraftingMachines || !m_RecipeDatabase) {
+        return nullptr;
+    }
+
+    auto* machine = m_CraftingMachines->get(m_SelectedMachine);
+    if (!machine) {
+        return nullptr;
+    }
+
+    return m_RecipeDatabase->getRecipe(machine->currentRecipeName);
+}
+
+const ItemDefinition* GUIMachine::getInputSlotBackgroundItem(int slotX, int slotY) const {
+    if (slotY != 0 || slotX < 0 || !m_ItemDatabase) {
+        return nullptr;
+    }
+
+    const RecipeDefinition* recipe = getSelectedRecipe();
+    if (!recipe) {
+        return nullptr;
+    }
+
+    if (slotX >= static_cast<int>(recipe->inputs.size())) {
+        return nullptr;
+    }
+
+    return m_ItemDatabase->getItem(recipe->inputs[slotX].itemName);
+}
+
 bool GUIMachine::tryApplyRecipeLayout(const RecipeDefinition& recipe) const {
     if (!m_MachineInventories) {
         return false;
@@ -610,4 +709,44 @@ bool GUIMachine::tryApplyRecipeLayout(const RecipeDefinition& recipe) const {
     }
 
     return true;
+}
+
+
+const ItemDefinition * GUIMachine::getOutputSlotBackgroundItem(int slotX, int slotY) const {
+    if (slotY != 0 || slotX < 0 || !m_ItemDatabase) return nullptr;
+
+    const RecipeDefinition* recipe = getSelectedRecipe();
+    if (!recipe) return nullptr;
+
+    if (slotX >= static_cast<int>(recipe->outputs.size())) return nullptr;
+
+    return m_ItemDatabase->getItem(recipe->outputs[slotX].itemName);
+}
+
+bool GUIMachine::canAcceptOutputStack(const ItemStack &stack) const {
+    if (stack.isEmpty() || !stack.item || !m_CraftingMachines || !m_RecipeDatabase) return false;
+
+    auto* machine = m_CraftingMachines->get(m_SelectedMachine);
+    if (!machine) return false;
+
+    const RecipeDefinition* recipe = m_RecipeDatabase->getRecipe(machine->currentRecipeName);
+    if (!recipe) return false;
+
+    for (const auto& ingredient : recipe->outputs) {
+        if (ingredient.itemName == stack.item->uniqueName)
+            return true;
+    }
+
+    return false;
+}
+
+bool GUIMachine::canAcceptOutputStackAtSlot(int slotX, int slotY, const ItemStack &stack) const {
+    if (slotY != 0 || slotX < 0 || stack.isEmpty() || !stack.item) return false;
+
+    const RecipeDefinition* recipe = getSelectedRecipe();
+    if (!recipe) return false;
+
+    if (slotX >= static_cast<int>(recipe->outputs.size())) return false;
+
+    return recipe->outputs[slotX].itemName == stack.item->uniqueName;
 }

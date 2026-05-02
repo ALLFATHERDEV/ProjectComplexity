@@ -5,5 +5,5 @@
 
 class CharacterStateSystem {
 public:
-    void update(ComponentStorage<CharacterStateComponent>& states, ComponentStorage<VelocityComponent>& velocities);
+    static void update(ComponentStorage<CharacterStateComponent>& states, ComponentStorage<VelocityComponent>& velocities);
 };

@@ -72,24 +72,41 @@ void CraftingSystem::processMachine(float deltaTime, CraftingMachineComponent &m
 }
 
 bool CraftingSystem::hasIngredients(MachineInventoryComponent &inventory, const RecipeDefinition &recipe, const ItemDatabase &itemDatabase) {
-    for (const auto& ingredient : recipe.inputs) {
+    for (size_t i = 0; i < recipe.inputs.size(); i++) {
+        const auto& ingredient = recipe.inputs[i];
         const ItemDefinition* item = itemDatabase.getItem(ingredient.itemName);
         if (!item)
             return false;
 
-        if (inventory.inputInventory.countItem(item) < ingredient.amount)
+        InventorySlot* inputSlot = inventory.inputInventory.getSlot(static_cast<int>(i), 0);
+        if (!inputSlot || inputSlot->isEmpty())
+            return false;
+
+        if (inputSlot->stack.item != item)
+            return false;
+
+        if (inputSlot->stack.amount < ingredient.amount)
             return false;
     }
     return true;
 }
 
 void CraftingSystem::consumeIngredient(MachineInventoryComponent &inventory, const RecipeDefinition &recipe, const ItemDatabase &itemDatabase) {
-    for (const auto& ingredient : recipe.inputs) {
+    for (size_t i = 0; i < recipe.inputs.size(); i++) {
+        const auto& ingredient = recipe.inputs[i];
         const ItemDefinition* item = itemDatabase.getItem(ingredient.itemName);
         if (!item)
             continue;
 
-        inventory.inputInventory.removeItem(item, ingredient.amount);
+        InventorySlot* inputSlot = inventory.inputInventory.getSlot(static_cast<int>(i), 0);
+        if (!inputSlot || inputSlot->isEmpty() || inputSlot->stack.item != item) {
+            continue;
+        }
+
+        inputSlot->stack.amount -= ingredient.amount;
+        if (inputSlot->stack.amount <= 0) {
+            inputSlot->stack.clear();
+        }
     }
 }
 

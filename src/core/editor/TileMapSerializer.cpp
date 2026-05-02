@@ -1,11 +1,9 @@
 #include "TileMapSerializer.hpp"
 #include <fstream>
-#include <cctype>
 #include <sstream>
 
 #include "../Logger.hpp"
 
-namespace {
 int directionToInt(Direction direction) {
     return static_cast<int>(direction);
 }
@@ -18,32 +16,11 @@ Direction intToDirection(int value) {
             return Direction::UP;
         case 2:
             return Direction::LEFT;
-        case 3:
-            return Direction::RIGHT;
         default:
             return Direction::RIGHT;
     }
 }
 
-bool isIntegerToken(const std::string& token) {
-    if (token.empty()) {
-        return false;
-    }
-
-    size_t index = (token[0] == '-' || token[0] == '+') ? 1 : 0;
-    if (index >= token.size()) {
-        return false;
-    }
-
-    for (; index < token.size(); index++) {
-        if (!std::isdigit(static_cast<unsigned char>(token[index]))) {
-            return false;
-        }
-    }
-
-    return true;
-}
-}
 
 bool TileMapSerializer::save(const World& world, const std::string &filePath) {
     std::ofstream file(filePath);
@@ -159,16 +136,7 @@ bool TileMapSerializer::load(World& world, const std::string &filePath) {
         std::string type;
         ss >> type;
 
-        if (type == "LAYERS")
-        {
-        }
-        else if (type == "CONVEYORS")
-        {
-        }
-        else if (type == "PLACEABLES")
-        {
-        }
-        else if (type == "MACHINES")
+        if (type == "MACHINES")
         {
         }
         else if (type == "LAYER")

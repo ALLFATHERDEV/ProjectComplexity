@@ -2,7 +2,6 @@
 
 #include "imgui.h"
 #include "TileMapSerializer.hpp"
-#include "../Logger.hpp"
 
 void TileMapEditor::addTilePalette(const std::string& name, SpriteAtlas* atlas) {
     if (!atlas) {
@@ -17,7 +16,7 @@ void TileMapEditor::clearTilePalettes() {
     m_SelectedTilePaletteIndex = 0;
 }
 
-void TileMapEditor::setEnabled(bool enabled) {
+void TileMapEditor::setEnabled(const bool enabled) {
     m_Enabled = enabled;
 }
 
@@ -25,7 +24,7 @@ bool TileMapEditor::isEnabled() const {
     return m_Enabled;
 }
 
-void TileMapEditor::update(SDL_Event &event, World& world, const Camera2D &camera) {
+void TileMapEditor::update(const SDL_Event &event, World& world, const Camera2D &camera) {
     if (!m_Enabled) return;
 
     if (event.type != SDL_EVENT_MOUSE_BUTTON_DOWN)
@@ -35,32 +34,40 @@ void TileMapEditor::update(SDL_Event &event, World& world, const Camera2D &camer
     float mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
 
-    float worldX = mouseX / camera.getZoom() + camera.getX();
-    float worldY = mouseY / camera.getZoom() + camera.getY();
+    const float worldX = mouseX / camera.getZoom() + camera.getX();
+    const float worldY = mouseY / camera.getZoom() + camera.getY();
 
-    int tileX = static_cast<int>(worldX) / m_cellWidth;
-    int tileY = static_cast<int>(worldY) / m_CellHeight;
+    const int tileX = static_cast<int>(worldX) / m_cellWidth;
+    const int tileY = static_cast<int>(worldY) / m_CellHeight;
 
     if (event.button.button == SDL_BUTTON_LEFT) {
-        if (m_PlacementMode == PlacementMode::Tile) {
-            TilePaletteEntry* palette = getSelectedTilePalette();
-            if (!palette || !palette->atlas) {
-                return;
-            }
-
-            Sprite sprite = palette->atlas->getSprite(m_SelectedTileX, m_SelectedTileY);
-            world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, palette->name, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
-        } else {
-            world.placeConveyorBelt(tileX, tileY, m_SelectedConveyorDirection);
+        // if (m_PlacementMode == PlacementMode::Tile) {
+        //     TilePaletteEntry* palette = getSelectedTilePalette();
+        //     if (!palette || !palette->atlas) {
+        //         return;
+        //     }
+        //
+        //     Sprite sprite = palette->atlas->getSprite(m_SelectedTileX, m_SelectedTileY);
+        //     world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, palette->name, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
+        // } else {
+        //     world.placeConveyorBelt(tileX, tileY, m_SelectedConveyorDirection);
+        // }
+        const TilePaletteEntry* palette = getSelectedTilePalette();
+        if (!palette || !palette->atlas) {
+            return;
         }
+
+        const Sprite sprite = palette->atlas->getSprite(m_SelectedTileX, m_SelectedTileY);
+        world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, palette->name, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
     }
 
     if (event.button.button == SDL_BUTTON_RIGHT) {
-        if (m_PlacementMode == PlacementMode::Tile) {
-            world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
-        } else {
-            world.removeConveyorBelt(tileX, tileY);
-        }
+        // if (m_PlacementMode == PlacementMode::Tile) {
+        //     world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
+        // } else {
+        //     world.removeConveyorBelt(tileX, tileY);
+        // }
+        world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
     }
 }
 
@@ -85,8 +92,8 @@ void TileMapEditor::renderImGui(World& world) {
         if (!m_TilePalettes.empty()) {
             std::vector<const char*> paletteNames;
             paletteNames.reserve(m_TilePalettes.size());
-            for (const auto& palette : m_TilePalettes) {
-                paletteNames.push_back(palette.name.c_str());
+            for (const auto&[name, atlas] : m_TilePalettes) {
+                paletteNames.push_back(name.c_str());
             }
 
             if (m_SelectedTilePaletteIndex < 0 || m_SelectedTilePaletteIndex >= static_cast<int>(m_TilePalettes.size())) {
@@ -122,16 +129,14 @@ void TileMapEditor::renderImGui(World& world) {
 }
 
 void TileMapEditor::renderTilePalette() {
-    TilePaletteEntry* palette = getSelectedTilePalette();
+    const TilePaletteEntry* palette = getSelectedTilePalette();
     if (!palette || !palette->atlas) {
         return;
     }
 
-    SpriteAtlas& atlas = *palette->atlas;
+    const SpriteAtlas& atlas = *palette->atlas;
 
     ImGui::Begin("Tile Palette");
-
-    constexpr float tilePreviewSize = 48.0f;
 
     SDL_Texture* texture = atlas.getTexture();
 
@@ -153,12 +158,12 @@ void TileMapEditor::renderTilePalette() {
 
             const float u1 = static_cast<float>((x + 1) * atlas.getSpriteWidth()) / atlas.getTextureWidth();
             const float v1 = static_cast<float>((y + 1) * atlas.getSpriteHeight()) / atlas.getTextureHeight();
-            bool selected = m_SelectedTileX == x && m_SelectedTileY == y;
+            const bool selected = m_SelectedTileX == x && m_SelectedTileY == y;
 
             if (selected)
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
 
-            if (ImGui::ImageButton("##title", (ImTextureID)texture, ImVec2(tilePreviewSize, tilePreviewSize), ImVec2(u0, v0), ImVec2(u1, v1))) {
+            if (constexpr float tilePreviewSize = 48.0f; ImGui::ImageButton("##title", (ImTextureID)texture, ImVec2(tilePreviewSize, tilePreviewSize), ImVec2(u0, v0), ImVec2(u1, v1))) {
                 m_SelectedTileX = x;
                 m_SelectedTileY = y;
             }
@@ -183,14 +188,14 @@ void TileMapEditor::renderTilePalette() {
 }
 
 TileMapEditor::TilePaletteEntry* TileMapEditor::getSelectedTilePalette() {
-    if (m_SelectedTilePaletteIndex < 0 || m_SelectedTilePaletteIndex >= static_cast<int>(m_TilePalettes.size())) {
+    if (m_SelectedTilePaletteIndex >= static_cast<int>(m_TilePalettes.size())) {
         return nullptr;
     }
 
     return &m_TilePalettes[m_SelectedTilePaletteIndex];
 }
 
-void TileMapEditor::renderConveyorPalette(SpriteAtlas &atlas) {
+void TileMapEditor::renderConveyorPalette(const SpriteAtlas &atlas) {
     ImGui::Begin("Conveyor Palette");
 
     SDL_Texture* texture = atlas.getTexture();
@@ -216,16 +221,16 @@ void TileMapEditor::renderConveyorPalette(SpriteAtlas &atlas) {
 
     constexpr float tilePreviewSize = 48.0f;
     for (int i = 0; i < 4; i++) {
-        const ConveyorOption& option = options[i];
+        const auto&[direction, atlasX, atlasY, label] = options[i];
         ImGui::PushID(i);
 
-        const float u0 = static_cast<float>(option.atlasX * atlas.getSpriteWidth()) / atlas.getTextureWidth();
-        const float v0 = static_cast<float>(option.atlasY * atlas.getSpriteHeight()) / atlas.getTextureHeight();
-        const float u1 = static_cast<float>((option.atlasX + 1) * atlas.getSpriteWidth()) / atlas.getTextureWidth();
-        const float v1 = static_cast<float>((option.atlasY + 1) * atlas.getSpriteHeight()) / atlas.getTextureHeight();
+        const float u0 = static_cast<float>(atlasX * atlas.getSpriteWidth()) / atlas.getTextureWidth();
+        const float v0 = static_cast<float>(atlasY * atlas.getSpriteHeight()) / atlas.getTextureHeight();
+        const float u1 = static_cast<float>((atlasX + 1) * atlas.getSpriteWidth()) / atlas.getTextureWidth();
+        const float v1 = static_cast<float>((atlasY + 1) * atlas.getSpriteHeight()) / atlas.getTextureHeight();
 
-        if (ImGui::ImageButton(option.label, (ImTextureID)texture, ImVec2(tilePreviewSize, tilePreviewSize), ImVec2(u0, v0), ImVec2(u1, v1))) {
-            m_SelectedConveyorDirection = option.direction;
+        if (ImGui::ImageButton(label, (ImTextureID)texture, ImVec2(tilePreviewSize, tilePreviewSize), ImVec2(u0, v0), ImVec2(u1, v1))) {
+            m_SelectedConveyorDirection = direction;
         }
 
         if (i < 3) {

@@ -140,7 +140,6 @@ private:
     AnimatedSpriteComponent m_Comp;
     RenderSystem m_RenderSystem;
     AnimationSystem m_AnimationSystem;
-    AnimatedRenderSystem m_AnimatedRenderSystem;
     MovementSystem m_MovementSystem;
     InputSystem m_InputSystem;
     MovementInputSystem m_MovementInputSystem;

@@ -4,6 +4,6 @@
 
 class AnimationSystem {
 public:
-    void update(float deltaTime, ComponentStorage<AnimationControllerComponent>& controllers);
+    static void update(float deltaTime, ComponentStorage<AnimationControllerComponent>& controllers);
 };
 

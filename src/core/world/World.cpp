@@ -80,7 +80,7 @@ void World::render() {
     m_TileMap.render(m_Renderer, m_Camera, m_ChunkManager);
 
     m_RenderSystem.render(m_Renderer, m_Camera, m_ChunkManager, m_Positions, m_Sprites);
-    m_AnimatedRenderSystem.render(m_Renderer, m_Camera, m_ChunkManager, m_Positions, m_AnimationControllers);
+    AnimatedRenderSystem::render(m_Renderer, m_Camera, m_ChunkManager, m_Positions, m_AnimationControllers);
 }
 
 void World::handleInput(SDL_Event &event) {

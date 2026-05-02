@@ -25,10 +25,10 @@ public:
     void setEnabled(bool enabled);
     bool isEnabled() const;
 
-    void update(SDL_Event& event, World& world, const Camera2D& camera);
+    void update(const SDL_Event& event, World& world, const Camera2D& camera);
     void renderImGui(World& world);
     void renderTilePalette();
-    void renderConveyorPalette(SpriteAtlas& atlas);
+    void renderConveyorPalette(const SpriteAtlas& atlas);
 
 private:
     TilePaletteEntry* getSelectedTilePalette();

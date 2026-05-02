@@ -99,11 +99,11 @@ int InventoryGrid::countItem(const ItemDefinition *item) const {
     return count;
 }
 
+
 InventorySlot *InventoryGrid::getSlot(int x, int y) {
     if (x < 0 || y < 0 || x >= m_Width || y >= m_Height)
         return nullptr;
 
     return &m_Slots[y * m_Width + x];
 }
-
 

@@ -2,8 +2,6 @@
 
 #include <string>
 
-#include "../graphics/SpriteAtlas.hpp"
-#include "../map/TileMap.hpp"
 #include "../world/World.hpp"
 
 class TileMapSerializer {

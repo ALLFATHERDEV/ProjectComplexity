@@ -5,5 +5,5 @@
 
 class AnimationStateSystem {
 public:
-    void update(ComponentStorage<CharacterStateComponent>& states, ComponentStorage<AnimationControllerComponent>& controllers);
+    static void update(ComponentStorage<CharacterStateComponent>& states, ComponentStorage<AnimationControllerComponent>& controllers);
 };
