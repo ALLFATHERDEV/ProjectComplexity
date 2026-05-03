@@ -5,7 +5,6 @@
 #include "../map/TileMapLayer.hpp"
 #include "../util/PerlinNoise.hpp"
 
-namespace {
 const TileMapGenerator::TileConfig& getTileConfigForBiome(TileMapGenerator::BiomeType biome, const TileMapGenerator::Config& config) {
     switch (biome) {
         case TileMapGenerator::BiomeType::Desert:
@@ -61,7 +60,6 @@ TileMapGenerator::BiomeType resolveBiome(const TileMapGenerator::Config& config,
     }
 
     return TileMapGenerator::BiomeType::Plains;
-}
 }
 
 void TileMapGenerator::generateTerrain(TileMap& tileMap, SpriteAtlas& atlas, const Config& config) {

@@ -1,0 +1,157 @@
+{
+  "atlasTexturePath": "assets/Sprite-0002.png",
+  "animations": [
+    {
+      "name": "player_idle_down",
+      "frames": [
+        {
+            "x": 6,
+            "y": 0
+        }
+      ],
+      "loop": true,
+      "playTime": 0.2
+    },
+    {
+      "name": "player_idle_up",
+      "frames": [
+        {
+            "x": 0,
+            "y": 0
+        }
+      ],
+      "loop": true,
+      "playTime": 0.2
+    },
+    {
+      "name": "player_idle_right",
+      "frames": [
+        {
+            "x": 3,
+            "y": 0
+        }
+      ],
+      "loop": true,
+      "playTime": 0.2
+    },
+    {
+      "name": "player_idle_left",
+      "frames": [
+        {
+            "x": 9,
+            "y": 0
+        }
+      ],
+      "loop": true,
+      "playTime": 0.2
+    },
+    {
+      "name": "player_walk_down",
+      "frames": [
+        {
+        "x": 6,
+        "y": 0
+        },
+        {
+          "x": 7,
+          "y": 0
+        },
+        {
+          "x": 8,
+          "y": 0
+        },
+        {
+          "x": 7,
+          "y": 0
+        },
+        {
+          "x": 6,
+          "y": 0
+        }
+      ],
+      "loop": true,
+      "playTime": 0.2
+    },
+    {
+      "name": "player_walk_up",
+      "frames": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 1,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        },
+        {
+            "x": 1,
+            "y": 0
+        },
+        {
+            "x": 0,
+            "y": 0
+        }
+      ],
+      "loop": true,
+      "playTime": 0.2
+    },
+    {
+      "name": "player_walk_left",
+      "frames": [
+        {
+            "x": 9,
+            "y": 0
+        },
+        {
+            "x": 10,
+            "y": 0
+        },
+        {
+            "x": 11,
+            "y": 0
+        },
+        {
+            "x": 10,
+            "y": 0
+        },
+        {
+            "x": 9,
+            "y": 0
+        }
+      ],
+      "loop": true,
+      "playTime": 0.2
+    },
+    {
+      "name": "player_walk_right",
+      "frames": [
+        {
+          "x": 3,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 5,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 3,
+          "y": 0
+        }
+      ],
+      "loop": true,
+      "playTime": 0.2
+    }
+  ]
+}

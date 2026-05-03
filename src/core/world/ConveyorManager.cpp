@@ -2,15 +2,7 @@
 
 #include "EntityFactory.hpp"
 
-namespace {
-constexpr float kTileSize = 32.0f;
-
-struct SpriteCoords {
-    int x;
-    int y;
-};
-
-bool pointsTo(Direction direction, int fromX, int fromY, int targetX, int targetY) {
+bool ConveyorManager::pointsTo(Direction direction, int fromX, int fromY, int targetX, int targetY) {
     switch (direction) {
         case Direction::RIGHT:
             return fromX + 1 == targetX && fromY == targetY;
@@ -25,7 +17,7 @@ bool pointsTo(Direction direction, int fromX, int fromY, int targetX, int target
     }
 }
 
-SpriteCoords getStraightConveyorSprite(Direction direction) {
+SpriteCoords ConveyorManager::getStraightConveyorSprite(Direction direction) {
     switch (direction) {
         case Direction::RIGHT:
             return {0, 5};
@@ -40,7 +32,7 @@ SpriteCoords getStraightConveyorSprite(Direction direction) {
     }
 }
 
-SpriteCoords getCurveConveyorSprite(Direction incomingSide, Direction outgoingDirection) {
+SpriteCoords ConveyorManager::getCurveConveyorSprite(Direction incomingSide, Direction outgoingDirection) {
     if (incomingSide == Direction::LEFT && outgoingDirection == Direction::DOWN) {
         return {3, 12};
     }
@@ -74,7 +66,6 @@ SpriteCoords getCurveConveyorSprite(Direction incomingSide, Direction outgoingDi
     }
 
     return getStraightConveyorSprite(outgoingDirection);
-}
 }
 
 ConveyorManager::ConveyorManager(EntityManager& entityManager,
@@ -142,7 +133,8 @@ void ConveyorManager::refreshConveyorSpriteAt(int tileX, int tileY) {
 
     auto* belt = m_ConveyorBelts.get(beltEntity);
     auto* sprite = m_Sprites.get(beltEntity);
-    if (!belt || !sprite) {
+    auto* animationController = m_AnimationControllers.get(beltEntity);
+    if (!belt) {
         return;
     }
 
@@ -171,6 +163,7 @@ void ConveyorManager::refreshConveyorSpriteAt(int tileX, int tileY) {
     }
 
     SpriteCoords coords = getStraightConveyorSprite(belt->direction);
+    bool useCurveSprite = false;
     if (incomingSides.size() == 1) {
         const Direction incomingSide = incomingSides.front();
         const bool isStraight =
@@ -181,10 +174,36 @@ void ConveyorManager::refreshConveyorSpriteAt(int tileX, int tileY) {
 
         if (!isStraight) {
             coords = getCurveConveyorSprite(incomingSide, belt->direction);
+            useCurveSprite = true;
         }
     }
 
-    sprite->sprite = m_ConveyorAtlas->getSprite(coords.x, coords.y);
+    if (useCurveSprite) {
+        if (sprite) {
+            sprite->visible = true;
+            sprite->sprite = m_ConveyorAtlas->getSprite(coords.x, coords.y);
+        }
+
+        if (animationController) {
+            animationController->enabled = false;
+            animationController->currentAnimation = nullptr;
+        }
+
+        return;
+    }
+
+    if (sprite) {
+        sprite->visible = false;
+        sprite->sprite = m_ConveyorAtlas->getSprite(coords.x, coords.y);
+    }
+
+    if (animationController) {
+        animationController->enabled = true;
+        animationController->stateName = "default";
+        animationController->useDirection = true;
+        animationController->direction = belt->direction;
+        animationController->currentAnimation = nullptr;
+    }
 }
 
 void ConveyorManager::refreshConveyorSpritesAround(int tileX, int tileY) {
@@ -221,6 +240,7 @@ void ConveyorManager::removeConveyorBelt(int tileX, int tileY) {
     const Entity belt = it->second;
     m_Positions.remove(belt);
     m_Sprites.remove(belt);
+    m_AnimationControllers.remove(belt);
     m_ConveyorBelts.remove(belt);
     m_Collisions.remove(belt);
     m_Interactions.remove(belt);

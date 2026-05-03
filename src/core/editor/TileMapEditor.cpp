@@ -41,33 +41,33 @@ void TileMapEditor::update(const SDL_Event &event, World& world, const Camera2D 
     const int tileY = static_cast<int>(worldY) / m_CellHeight;
 
     if (event.button.button == SDL_BUTTON_LEFT) {
-        // if (m_PlacementMode == PlacementMode::Tile) {
-        //     TilePaletteEntry* palette = getSelectedTilePalette();
-        //     if (!palette || !palette->atlas) {
-        //         return;
-        //     }
-        //
-        //     Sprite sprite = palette->atlas->getSprite(m_SelectedTileX, m_SelectedTileY);
-        //     world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, palette->name, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
-        // } else {
-        //     world.placeConveyorBelt(tileX, tileY, m_SelectedConveyorDirection);
-        // }
-        const TilePaletteEntry* palette = getSelectedTilePalette();
-        if (!palette || !palette->atlas) {
-            return;
-        }
+        if (m_PlacementMode == PlacementMode::Tile) {
+            TilePaletteEntry* palette = getSelectedTilePalette();
+            if (!palette || !palette->atlas) {
+                return;
+            }
 
-        const Sprite sprite = palette->atlas->getSprite(m_SelectedTileX, m_SelectedTileY);
-        world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, palette->name, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
+            Sprite sprite = palette->atlas->getSprite(m_SelectedTileX, m_SelectedTileY);
+            world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, palette->name, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
+        } else {
+            world.placeConveyorBelt(tileX, tileY, m_SelectedConveyorDirection);
+        }
+        // const TilePaletteEntry* palette = getSelectedTilePalette();
+        // if (!palette || !palette->atlas) {
+        //     return;
+        // }
+        //
+        // const Sprite sprite = palette->atlas->getSprite(m_SelectedTileX, m_SelectedTileY);
+        // world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, palette->name, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
     }
 
     if (event.button.button == SDL_BUTTON_RIGHT) {
-        // if (m_PlacementMode == PlacementMode::Tile) {
-        //     world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
-        // } else {
-        //     world.removeConveyorBelt(tileX, tileY);
-        // }
-        world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
+        if (m_PlacementMode == PlacementMode::Tile) {
+            world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
+        } else {
+            world.removeConveyorBelt(tileX, tileY);
+        }
+        // world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
     }
 }
 

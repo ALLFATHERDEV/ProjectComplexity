@@ -14,6 +14,7 @@ public:
 
     bool loadItemsFromFolder(const std::string& folderPath, SpriteAtlas& atlas, const Renderer& renderer);
     const ItemDefinition* getItem(const std::string& uniqueName) const;
+    const std::unordered_map<std::string, ItemDefinition>& getAllItems() const;
 
 private:
     std::unordered_map<std::string, ItemDefinition> m_Items;

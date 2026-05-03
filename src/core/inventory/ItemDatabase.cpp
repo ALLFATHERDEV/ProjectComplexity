@@ -62,6 +62,7 @@ bool ItemDatabase::loadItemsFromFolder(const std::string &folderPath, SpriteAtla
         item.placeableBlocking = data.value("placeableBlocking", true);
         item.placeableLayer = data.value("placeableLayer", 1);
         item.placedMachineUniqueName = data.value("placedMachineUniqueName", "");
+        item.placesConveyorBelt = data.value("placesConveyorBelt", false);
         item.placesStorageContainer = data.value("placesStorageContainer", false);
         item.containerInventoryWidth = std::max(1, data.value("containerInventoryWidth", 4));
         item.containerInventoryHeight = std::max(1, data.value("containerInventoryHeight", 4));
@@ -102,4 +103,8 @@ const ItemDefinition* ItemDatabase::getItem(const std::string &uniqueName) const
     if (it == m_Items.end())
         return nullptr;
     return &it->second;
+}
+
+const std::unordered_map<std::string, ItemDefinition> & ItemDatabase::getAllItems() const {
+    return m_Items;
 }

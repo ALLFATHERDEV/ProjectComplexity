@@ -9,7 +9,6 @@
 
 using json = nlohmann::json;
 
-namespace {
 void loadBaseMachineFields(MachineDefinition& machine, const json& data, MachineType machineType) {
     machine.uniqueName = data.value("uniqueName", "");
     machine.displayName = data.value("displayName", "");
@@ -37,7 +36,6 @@ void loadBaseMachineFields(MachineDefinition& machine, const json& data, Machine
             }
         }
     }
-}
 }
 
 bool MachineDatabase::loadMachinesFromFolder(const std::string& folderPath) {

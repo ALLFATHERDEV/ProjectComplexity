@@ -27,10 +27,25 @@ void SpriteAtlas::createAtlas(const Renderer* renderer, int spriteWidth, int spr
             m_Sprites.push_back(sprite);
         }
     }
-    LOG_INFO("Created sprite atlas with {} sprites", m_NumSpritesX * m_NumSpritesY);
+    // LOG_INFO("Created sprite atlas with {} sprites", m_NumSpritesX * m_NumSpritesY);
 
 }
 
 Sprite SpriteAtlas::getSprite(int x, int y) const {
     return m_Sprites[y * m_NumSpritesX + x];
+}
+
+UVCoords SpriteAtlas::getUVCoordsOfSprite(int x, int y) const {
+    Sprite sprite = getSprite(x, y);
+    return {
+        sprite.srcRect.x / m_TextureWidth,
+        sprite.srcRect.y / m_TextureHeight,
+        (sprite.srcRect.x + sprite.srcRect.w) / m_TextureWidth,
+        (sprite.srcRect.y + sprite.srcRect.h) / m_TextureHeight
+    };
+}
+
+void SpriteAtlas::clear() {
+    SDL_DestroyTexture(m_Texture);
+    m_Texture = nullptr;
 }

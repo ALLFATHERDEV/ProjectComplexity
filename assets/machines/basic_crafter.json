@@ -1,17 +1,18 @@
 {
-  "uniqueName": "basic_crafter",
-  "displayName": "Crafting Machine",
-  "type": "crafting",
+  "allowedPlacementTags": [],
   "availableRecipes": [
     "test_recipe",
     "test_recipe2",
     "steel"
   ],
-  "spriteAtlasX": 0,
-  "spriteAtlasY": 3,
-  "widthTiles": 1,
+  "displayName": "Crafting Machine",
+  "fuelHeight": 1,
+  "fuelWidth": 1,
   "heightTiles": 1,
   "requiresFuel": true,
-  "fuelWidth": 1,
-  "fuelHeight": 1
+  "spriteAtlasX": 1,
+  "spriteAtlasY": 6,
+  "type": "crafting",
+  "uniqueName": "basic_crafter",
+  "widthTiles": 1
 }

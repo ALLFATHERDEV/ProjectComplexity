@@ -1,13 +1,16 @@
 {
-  "uniqueName": "basic_crafter_item",
-  "id": 5,
   "displayName": "Basic Crafter",
-  "maxStackSize": 16,
-  "iconAtlasX": 6,
-  "iconAtlasY": 20,
+  "fuelValue": 0.0,
+  "iconAtlasX": 0,
+  "iconAtlasY": 2,
+  "id": 5,
   "isPlaceable": true,
-  "placeableTexturePath": "assets/Sprite-0002.png",
+  "maxStackSize": 16,
   "placeableBlocking": true,
+  "placeableHeightTiles": 1,
   "placeableLayer": 1,
-  "placedMachineUniqueName": "basic_crafter"
+  "placeableTexturePath": "assets/Sprite-0002.png",
+  "placeableWidthTiles": 1,
+  "placedMachineUniqueName": "basic_crafter",
+  "uniqueName": "basic_crafter_item"
 }

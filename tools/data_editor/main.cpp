@@ -11,15 +11,18 @@
 #include "imgui_impl_sdlrenderer3.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include <nlohmann/json.hpp>
+#include <SDL3_image/SDL_image.h>
 
-namespace {
 using json = nlohmann::json;
 
 enum class EditorSection {
     Items,
     Recipes,
-    Entity
+    Entity,
+    Animations
 };
+
+constexpr std::size_t kSectionCount = 4;
 
 struct ItemRecord {
     std::filesystem::path filePath;
@@ -76,21 +79,60 @@ struct MachineRecord {
     float miningSpeed = 1.0f;
 };
 
+struct AnimationFrameRecord {
+    int x = 0;
+    int y = 0;
+};
+
+struct AnimationClipRecord {
+    std::string name;
+    std::vector<AnimationFrameRecord> frames;
+    bool loop = true;
+    float playTime = 0.2f;
+};
+
+struct AnimationFileRecord {
+    std::filesystem::path filePath;
+    bool dirty = false;
+    std::string fileNameStem;
+    std::string atlasTexturePath = "assets/Sprite-0002.png";
+    std::vector<AnimationClipRecord> animations;
+};
+
 struct EditorDataStore {
     std::filesystem::path projectRoot;
     std::vector<ItemRecord> items;
     std::vector<RecipeRecord> recipes;
     std::vector<MachineRecord> machines;
+    std::vector<AnimationFileRecord> animationFiles;
     std::vector<std::string> loadErrors;
     std::string statusMessage;
     bool statusIsError = false;
-    std::array<std::string, 3> searchTerms;
+    std::array<std::string, kSectionCount> searchTerms;
     bool showUnsavedChangesModal = false;
     std::string pendingAction;
     EditorSection pendingSection = EditorSection::Items;
 };
 
 void clampSelectedIndex(int& selectedIndex, std::size_t count);
+
+struct AtlasResource {
+    std::filesystem::path filePath;
+    SDL_Texture* texture = nullptr;
+    float textureWidth = 0.0f;
+    float textureHeight = 0.0f;
+    int spriteWidth = 32;
+    int spriteHeight = 32;
+    int columns = 0;
+    int rows = 0;
+};
+
+struct EditorAtlases {
+    AtlasResource itemAtlas;
+    AtlasResource machineAtlas;
+    AtlasResource animationAtlas;
+    std::string animationAtlasPath;
+};
 
 std::string sectionLabel(const EditorSection section) {
     switch (section) {
@@ -100,6 +142,8 @@ std::string sectionLabel(const EditorSection section) {
             return "Rezepte";
         case EditorSection::Entity:
             return "Entity";
+        case EditorSection::Animations:
+            return "Animationen";
         default:
             return "Unknown";
     }
@@ -124,6 +168,84 @@ std::filesystem::path findProjectRoot() {
     }
 
     return {};
+}
+
+void releaseAtlas(AtlasResource& atlas) {
+    if (atlas.texture) {
+        SDL_DestroyTexture(atlas.texture);
+        atlas.texture = nullptr;
+    }
+    atlas.textureWidth = 0.0f;
+    atlas.textureHeight = 0.0f;
+    atlas.columns = 0;
+    atlas.rows = 0;
+}
+
+bool loadAtlasResource(SDL_Renderer* renderer,
+                       const std::filesystem::path& filePath,
+                       const int spriteWidth,
+                       const int spriteHeight,
+                       AtlasResource& atlas,
+                       std::string& errorMessage) {
+    releaseAtlas(atlas);
+
+    atlas.filePath = filePath;
+    atlas.spriteWidth = spriteWidth;
+    atlas.spriteHeight = spriteHeight;
+
+    atlas.texture = IMG_LoadTexture(renderer, filePath.string().c_str());
+    if (!atlas.texture) {
+        errorMessage = "Could not load atlas texture: " + filePath.string();
+        return false;
+    }
+
+    SDL_GetTextureSize(atlas.texture, &atlas.textureWidth, &atlas.textureHeight);
+    atlas.columns = static_cast<int>(atlas.textureWidth) / spriteWidth;
+    atlas.rows = static_cast<int>(atlas.textureHeight) / spriteHeight;
+    return true;
+}
+
+EditorAtlases loadEditorAtlases(const std::filesystem::path& projectRoot,
+                                SDL_Renderer* renderer,
+                                std::vector<std::string>& loadErrors) {
+    EditorAtlases atlases;
+    std::string errorMessage;
+
+    if (!loadAtlasResource(renderer, projectRoot / "assets" / "tilesets" / "items_sheet.png", 32, 32, atlases.itemAtlas, errorMessage)) {
+        loadErrors.push_back(errorMessage);
+    }
+    errorMessage.clear();
+    if (!loadAtlasResource(renderer, projectRoot / "assets" / "tilesets" / "Map_tiles.png", 32, 32, atlases.machineAtlas, errorMessage)) {
+        loadErrors.push_back(errorMessage);
+    }
+
+    return atlases;
+}
+
+bool ensureAnimationAtlasLoaded(EditorAtlases& atlases,
+                                const std::filesystem::path& projectRoot,
+                                SDL_Renderer* renderer,
+                                const std::string& atlasTexturePath,
+                                std::string& errorMessage) {
+    if (atlases.animationAtlas.texture && atlases.animationAtlasPath == atlasTexturePath) {
+        return true;
+    }
+
+    releaseAtlas(atlases.animationAtlas);
+    atlases.animationAtlasPath.clear();
+
+    if (atlasTexturePath.empty()) {
+        errorMessage = "Animation atlas path is empty.";
+        return false;
+    }
+
+    const std::filesystem::path resolvedPath = projectRoot / atlasTexturePath;
+    if (!loadAtlasResource(renderer, resolvedPath, 32, 32, atlases.animationAtlas, errorMessage)) {
+        return false;
+    }
+
+    atlases.animationAtlasPath = atlasTexturePath;
+    return true;
 }
 
 template <typename TRecord, typename TLoader>
@@ -275,6 +397,40 @@ EditorDataStore loadEditorData() {
         }
     );
 
+    loadJsonFolder(
+        dataStore.projectRoot / "assets" / "animations",
+        dataStore.animationFiles,
+        dataStore.loadErrors,
+        [](const std::filesystem::path& filePath, const json& data) {
+            AnimationFileRecord animationFile;
+            animationFile.filePath = filePath;
+            animationFile.fileNameStem = filePath.stem().string();
+            animationFile.atlasTexturePath = data.value("atlasTexturePath", "assets/Sprite-0002.png");
+
+            if (data.contains("animations") && data["animations"].is_array()) {
+                for (const auto& animationData : data["animations"]) {
+                    AnimationClipRecord clip;
+                    clip.name = animationData.value("name", "");
+                    clip.loop = animationData.value("loop", true);
+                    clip.playTime = animationData.value("playTime", 0.2f);
+
+                    if (animationData.contains("frames") && animationData["frames"].is_array()) {
+                        for (const auto& frameData : animationData["frames"]) {
+                            AnimationFrameRecord frame;
+                            frame.x = frameData.value("x", 0);
+                            frame.y = frameData.value("y", 0);
+                            clip.frames.push_back(frame);
+                        }
+                    }
+
+                    animationFile.animations.push_back(std::move(clip));
+                }
+            }
+
+            return animationFile;
+        }
+    );
+
     return dataStore;
 }
 
@@ -286,6 +442,8 @@ std::filesystem::path sectionFolderPath(const EditorDataStore& dataStore, const 
             return dataStore.projectRoot / "assets" / "recipes";
         case EditorSection::Entity:
             return dataStore.projectRoot / "assets" / "machines";
+        case EditorSection::Animations:
+            return dataStore.projectRoot / "assets" / "animations";
         default:
             return {};
     }
@@ -373,6 +531,44 @@ bool hasDuplicateMachineUniqueName(const EditorDataStore& dataStore, const Machi
         }
     }
     return matches > 1;
+}
+
+bool validateAnimationFileRecord(const AnimationFileRecord& animationFile, std::string& errorMessage) {
+    if (animationFile.fileNameStem.empty()) {
+        errorMessage = "Animation file requires a file name.";
+        return false;
+    }
+    if (animationFile.atlasTexturePath.empty()) {
+        errorMessage = "Animation file requires an atlas texture path.";
+        return false;
+    }
+    if (animationFile.animations.empty()) {
+        errorMessage = "Animation file requires at least one animation.";
+        return false;
+    }
+
+    for (const AnimationClipRecord& clip : animationFile.animations) {
+        if (clip.name.empty()) {
+            errorMessage = "Each animation requires a name.";
+            return false;
+        }
+        if (clip.frames.empty()) {
+            errorMessage = "Each animation requires at least one frame.";
+            return false;
+        }
+        if (clip.playTime < 0.0f) {
+            errorMessage = "Animation playTime must not be negative.";
+            return false;
+        }
+        for (const AnimationFrameRecord& frame : clip.frames) {
+            if (frame.x < 0 || frame.y < 0) {
+                errorMessage = "Animation frame coordinates must not be negative.";
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 bool validateItemRecord(const EditorDataStore& dataStore, const ItemRecord& item, std::string& errorMessage) {
@@ -539,6 +735,60 @@ bool renderStringSelection(const char* label,
         }
         ImGui::EndCombo();
     }
+
+    return changed;
+}
+
+bool renderAtlasPicker(const char* label,
+                       const AtlasResource& atlas,
+                       int& atlasX,
+                       int& atlasY,
+                       const float scale = 2.0f) {
+    if (!atlas.texture || atlas.columns <= 0 || atlas.rows <= 0) {
+        ImGui::Text("Atlas unavailable: %s", label);
+        return false;
+    }
+
+    bool changed = false;
+    atlasX = (atlasX < 0) ? 0 : atlasX;
+    atlasY = (atlasY < 0) ? 0 : atlasY;
+    atlasX = (atlasX >= atlas.columns) ? atlas.columns - 1 : atlasX;
+    atlasY = (atlasY >= atlas.rows) ? atlas.rows - 1 : atlasY;
+
+    ImGui::Text("%s: %d, %d", label, atlasX, atlasY);
+
+    const ImVec2 imageSize(atlas.textureWidth * scale, atlas.textureHeight * scale);
+    const ImVec2 tileSize(static_cast<float>(atlas.spriteWidth) * scale, static_cast<float>(atlas.spriteHeight) * scale);
+
+    if (ImGui::BeginChild(label, ImVec2(0.0f, 260.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar)) {
+        const ImVec2 imageTopLeft = ImGui::GetCursorScreenPos();
+        ImGui::Image(reinterpret_cast<ImTextureID>(atlas.texture), imageSize);
+
+        const ImVec2 drawMin(
+            imageTopLeft.x + static_cast<float>(atlasX * atlas.spriteWidth) * scale,
+            imageTopLeft.y + static_cast<float>(atlasY * atlas.spriteHeight) * scale
+        );
+        const ImVec2 drawMax(drawMin.x + tileSize.x, drawMin.y + tileSize.y);
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        drawList->AddRect(drawMin, drawMax, IM_COL32(255, 220, 80, 255), 0.0f, 0, 3.0f);
+
+        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            const ImVec2 mousePos = ImGui::GetMousePos();
+            const float localX = mousePos.x - imageTopLeft.x;
+            const float localY = mousePos.y - imageTopLeft.y;
+
+            const int clickedX = static_cast<int>(localX / tileSize.x);
+            const int clickedY = static_cast<int>(localY / tileSize.y);
+
+            if (clickedX >= 0 && clickedX < atlas.columns && clickedY >= 0 && clickedY < atlas.rows) {
+                atlasX = clickedX;
+                atlasY = clickedY;
+                changed = true;
+            }
+        }
+    }
+    ImGui::EndChild();
 
     return changed;
 }
@@ -736,6 +986,52 @@ bool saveMachineRecord(MachineRecord& machine, std::string& errorMessage) {
     }
 }
 
+bool saveAnimationFileRecord(AnimationFileRecord& animationFile, std::string& errorMessage) {
+    const std::filesystem::path targetFilePath = buildUniqueFilePathForRename(animationFile.filePath, animationFile.fileNameStem);
+    json data;
+    data["atlasTexturePath"] = animationFile.atlasTexturePath;
+    data["animations"] = json::array();
+
+    for (const AnimationClipRecord& clip : animationFile.animations) {
+        json animationData;
+        animationData["name"] = clip.name;
+        animationData["loop"] = clip.loop;
+        animationData["playTime"] = clip.playTime;
+        animationData["frames"] = json::array();
+
+        for (const AnimationFrameRecord& frame : clip.frames) {
+            animationData["frames"].push_back({
+                {"x", frame.x},
+                {"y", frame.y}
+            });
+        }
+
+        data["animations"].push_back(std::move(animationData));
+    }
+
+    try {
+        std::ofstream file(targetFilePath);
+        if (!file.is_open()) {
+            errorMessage = "Could not open file for writing: " + targetFilePath.string();
+            return false;
+        }
+
+        file << data.dump(2) << '\n';
+        file.close();
+
+        if (targetFilePath != animationFile.filePath && std::filesystem::exists(animationFile.filePath)) {
+            std::filesystem::remove(animationFile.filePath);
+        }
+
+        animationFile.filePath = targetFilePath;
+        animationFile.fileNameStem = targetFilePath.stem().string();
+        return true;
+    } catch (const std::exception& exception) {
+        errorMessage = exception.what();
+        return false;
+    }
+}
+
 template <typename TRecord>
 const char* dirtyMarker(const TRecord& record) {
     return record.dirty ? "*" : "";
@@ -810,6 +1106,28 @@ bool saveAllDirtyRecords(EditorDataStore& dataStore) {
         ++savedCount;
     }
 
+    for (AnimationFileRecord& animationFile : dataStore.animationFiles) {
+        if (!animationFile.dirty) {
+            continue;
+        }
+
+        std::string errorMessage;
+        if (!validateAnimationFileRecord(animationFile, errorMessage)) {
+            dataStore.statusMessage = "Save All failed for animation file '" + animationFile.filePath.filename().string() + "': " + errorMessage;
+            dataStore.statusIsError = true;
+            return false;
+        }
+
+        if (!saveAnimationFileRecord(animationFile, errorMessage)) {
+            dataStore.statusMessage = "Save All failed for animation file '" + animationFile.filePath.filename().string() + "': " + errorMessage;
+            dataStore.statusIsError = true;
+            return false;
+        }
+
+        animationFile.dirty = false;
+        ++savedCount;
+    }
+
     dataStore.statusMessage = "Save All completed. Saved: " + std::to_string(savedCount);
     dataStore.statusIsError = false;
     return true;
@@ -831,6 +1149,11 @@ bool hasAnyDirtyRecords(const EditorDataStore& dataStore) {
             return true;
         }
     }
+    for (const AnimationFileRecord& animationFile : dataStore.animationFiles) {
+        if (animationFile.dirty) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -841,11 +1164,20 @@ void requestPendingAction(EditorDataStore& dataStore, const std::string& action,
     ImGui::OpenPopup("UnsavedChanges");
 }
 
-void performReload(EditorDataStore& dataStore, std::array<int, 3>& selectedIndices) {
+void performReload(EditorDataStore& dataStore,
+                   EditorAtlases& atlases,
+                   SDL_Renderer* renderer,
+                   std::array<int, kSectionCount>& selectedIndices) {
     dataStore = loadEditorData();
+    releaseAtlas(atlases.itemAtlas);
+    releaseAtlas(atlases.machineAtlas);
+    releaseAtlas(atlases.animationAtlas);
+    atlases.animationAtlasPath.clear();
+    atlases = loadEditorAtlases(dataStore.projectRoot, renderer, dataStore.loadErrors);
     clampSelectedIndex(selectedIndices[0], dataStore.items.size());
     clampSelectedIndex(selectedIndices[1], dataStore.recipes.size());
     clampSelectedIndex(selectedIndices[2], dataStore.machines.size());
+    clampSelectedIndex(selectedIndices[3], dataStore.animationFiles.size());
     dataStore.statusMessage = "Data reloaded.";
     dataStore.statusIsError = false;
 }
@@ -861,7 +1193,7 @@ void clampSelectedIndex(int& selectedIndex, const std::size_t count) {
     }
 }
 
-void createNewEntry(EditorDataStore& dataStore, const EditorSection section, std::array<int, 3>& selectedIndices) {
+void createNewEntry(EditorDataStore& dataStore, const EditorSection section, std::array<int, kSectionCount>& selectedIndices) {
     const std::filesystem::path folderPath = sectionFolderPath(dataStore, section);
     if (folderPath.empty()) {
         dataStore.statusMessage = "Could not determine folder for new entry.";
@@ -886,7 +1218,7 @@ void createNewEntry(EditorDataStore& dataStore, const EditorSection section, std
         recipe.filePath = buildUniqueFilePath(folderPath, recipe.uniqueName);
         dataStore.recipes.push_back(recipe);
         selectedIndices[1] = static_cast<int>(dataStore.recipes.size()) - 1;
-    } else {
+    } else if (section == EditorSection::Entity) {
         MachineRecord machine;
         machine.dirty = true;
         machine.uniqueName = "new_machine";
@@ -895,13 +1227,25 @@ void createNewEntry(EditorDataStore& dataStore, const EditorSection section, std
         machine.filePath = buildUniqueFilePath(folderPath, machine.uniqueName);
         dataStore.machines.push_back(machine);
         selectedIndices[2] = static_cast<int>(dataStore.machines.size()) - 1;
+    } else if (section == EditorSection::Animations) {
+        AnimationFileRecord animationFile;
+        animationFile.dirty = true;
+        animationFile.fileNameStem = "new_animation";
+        animationFile.atlasTexturePath = "assets/Sprite-0002.png";
+        animationFile.filePath = buildUniqueFilePath(folderPath, animationFile.fileNameStem);
+        AnimationClipRecord clip;
+        clip.name = "new_animation";
+        clip.frames.push_back({0, 0});
+        animationFile.animations.push_back(std::move(clip));
+        dataStore.animationFiles.push_back(std::move(animationFile));
+        selectedIndices[3] = static_cast<int>(dataStore.animationFiles.size()) - 1;
     }
 
     dataStore.statusMessage = sectionLabel(section) + " entry created. Edit and save it now.";
     dataStore.statusIsError = false;
 }
 
-void deleteCurrentEntry(EditorDataStore& dataStore, const EditorSection section, std::array<int, 3>& selectedIndices) {
+void deleteCurrentEntry(EditorDataStore& dataStore, const EditorSection section, std::array<int, kSectionCount>& selectedIndices) {
     try {
         if (section == EditorSection::Items) {
             const int index = selectedIndices[0];
@@ -925,7 +1269,7 @@ void deleteCurrentEntry(EditorDataStore& dataStore, const EditorSection section,
             }
             dataStore.recipes.erase(dataStore.recipes.begin() + index);
             clampSelectedIndex(selectedIndices[1], dataStore.recipes.size());
-        } else {
+        } else if (section == EditorSection::Entity) {
             const int index = selectedIndices[2];
             if (index < 0 || index >= static_cast<int>(dataStore.machines.size())) {
                 return;
@@ -936,6 +1280,17 @@ void deleteCurrentEntry(EditorDataStore& dataStore, const EditorSection section,
             }
             dataStore.machines.erase(dataStore.machines.begin() + index);
             clampSelectedIndex(selectedIndices[2], dataStore.machines.size());
+        } else if (section == EditorSection::Animations) {
+            const int index = selectedIndices[3];
+            if (index < 0 || index >= static_cast<int>(dataStore.animationFiles.size())) {
+                return;
+            }
+            const std::filesystem::path filePath = dataStore.animationFiles[index].filePath;
+            if (std::filesystem::exists(filePath)) {
+                std::filesystem::remove(filePath);
+            }
+            dataStore.animationFiles.erase(dataStore.animationFiles.begin() + index);
+            clampSelectedIndex(selectedIndices[3], dataStore.animationFiles.size());
         }
 
         dataStore.statusMessage = sectionLabel(section) + " entry deleted.";
@@ -946,7 +1301,11 @@ void deleteCurrentEntry(EditorDataStore& dataStore, const EditorSection section,
     }
 }
 
-void renderMainMenuBar(EditorSection& selectedSection, EditorDataStore& dataStore, std::array<int, 3>& selectedIndices) {
+void renderMainMenuBar(EditorSection& selectedSection,
+                       EditorDataStore& dataStore,
+                       EditorAtlases& atlases,
+                       SDL_Renderer* renderer,
+                       std::array<int, kSectionCount>& selectedIndices) {
     if (!ImGui::BeginMainMenuBar()) {
         return;
     }
@@ -966,6 +1325,11 @@ void renderMainMenuBar(EditorSection& selectedSection, EditorDataStore& dataStor
     }
 
     ImGui::SameLine();
+    if (ImGui::Selectable("Animationen", selectedSection == EditorSection::Animations, 0, ImVec2(110.0f, 0.0f))) {
+        selectedSection = EditorSection::Animations;
+    }
+
+    ImGui::SameLine();
     if (ImGui::Button("Save All")) {
         saveAllDirtyRecords(dataStore);
     }
@@ -975,14 +1339,14 @@ void renderMainMenuBar(EditorSection& selectedSection, EditorDataStore& dataStor
         if (hasAnyDirtyRecords(dataStore)) {
             requestPendingAction(dataStore, "reload", selectedSection);
         } else {
-            performReload(dataStore, selectedIndices);
+            performReload(dataStore, atlases, renderer, selectedIndices);
         }
     }
 
     ImGui::EndMainMenuBar();
 }
 
-void renderItemDetails(ItemRecord& item, EditorDataStore& dataStore) {
+void renderItemDetails(ItemRecord& item, EditorDataStore& dataStore, const EditorAtlases& atlases) {
     bool changed = false;
     ImGui::Text("File: %s", item.filePath.filename().string().c_str());
     ImGui::Text("Path: %s", item.filePath.string().c_str());
@@ -997,6 +1361,7 @@ void renderItemDetails(ItemRecord& item, EditorDataStore& dataStore) {
     changed |= ImGui::InputFloat("Fuel Value", &item.fuelValue, 0.1f, 1.0f, "%.2f");
     changed |= ImGui::Checkbox("Is Placeable", &item.isPlaceable);
     changed |= ImGui::Checkbox("Places Storage Container", &item.placesStorageContainer);
+    changed |= renderAtlasPicker("Item Icon Atlas", atlases.itemAtlas, item.iconAtlasX, item.iconAtlasY);
 
     if (item.isPlaceable) {
         ImGui::Separator();
@@ -1169,7 +1534,7 @@ void renderRecipeDetails(RecipeRecord& recipe, EditorDataStore& dataStore) {
     }
 }
 
-void renderMachineDetails(MachineRecord& machine, EditorDataStore& dataStore) {
+void renderMachineDetails(MachineRecord& machine, EditorDataStore& dataStore, const EditorAtlases& atlases) {
     bool changed = false;
     ImGui::Text("File: %s", machine.filePath.filename().string().c_str());
     ImGui::Text("Path: %s", machine.filePath.string().c_str());
@@ -1185,6 +1550,7 @@ void renderMachineDetails(MachineRecord& machine, EditorDataStore& dataStore) {
     changed |= ImGui::Checkbox("Requires Fuel", &machine.requiresFuel);
     changed |= ImGui::InputInt("Fuel Width", &machine.fuelWidth);
     changed |= ImGui::InputInt("Fuel Height", &machine.fuelHeight);
+    changed |= renderAtlasPicker("Machine Sprite Atlas", atlases.machineAtlas, machine.spriteAtlasX, machine.spriteAtlasY);
 
     if (machine.type == "miner") {
         changed |= ImGui::InputFloat("Mining Speed", &machine.miningSpeed, 0.1f, 1.0f, "%.2f");
@@ -1277,6 +1643,130 @@ void renderMachineDetails(MachineRecord& machine, EditorDataStore& dataStore) {
     }
 }
 
+void renderAnimationDetails(AnimationFileRecord& animationFile,
+                            EditorDataStore& dataStore,
+                            EditorAtlases& atlases,
+                            SDL_Renderer* renderer) {
+    bool changed = false;
+    ImGui::Text("File: %s", animationFile.filePath.filename().string().c_str());
+    ImGui::Text("Path: %s", animationFile.filePath.string().c_str());
+    ImGui::Separator();
+
+    changed |= ImGui::InputText("File Name", &animationFile.fileNameStem);
+    changed |= ImGui::InputText("Atlas Texture Path", &animationFile.atlasTexturePath);
+
+    std::string atlasError;
+    const bool atlasLoaded = ensureAnimationAtlasLoaded(
+        atlases,
+        dataStore.projectRoot,
+        renderer,
+        animationFile.atlasTexturePath,
+        atlasError
+    );
+
+    if (!atlasLoaded) {
+        ImGui::TextColored(ImVec4(0.90f, 0.30f, 0.30f, 1.00f), "%s", atlasError.c_str());
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Animations");
+
+    for (int animationIndex = 0; animationIndex < static_cast<int>(animationFile.animations.size()); ++animationIndex) {
+        AnimationClipRecord& clip = animationFile.animations[animationIndex];
+        ImGui::PushID(animationIndex);
+
+        const std::string header = clip.name.empty()
+            ? "Unnamed Animation"
+            : clip.name;
+
+        if (ImGui::TreeNodeEx("clip", ImGuiTreeNodeFlags_DefaultOpen, "%s", header.c_str())) {
+            changed |= ImGui::InputText("Name", &clip.name);
+            changed |= ImGui::Checkbox("Loop", &clip.loop);
+            changed |= ImGui::InputFloat("Play Time", &clip.playTime, 0.05f, 0.1f, "%.2f");
+            if (clip.playTime < 0.0f) {
+                clip.playTime = 0.0f;
+                changed = true;
+            }
+
+            ImGui::Separator();
+            ImGui::TextUnformatted("Frames");
+
+            for (int frameIndex = 0; frameIndex < static_cast<int>(clip.frames.size()); ++frameIndex) {
+                AnimationFrameRecord& frame = clip.frames[frameIndex];
+                ImGui::PushID(frameIndex);
+
+                changed |= ImGui::InputInt("X", &frame.x);
+                changed |= ImGui::InputInt("Y", &frame.y);
+                if (frame.x < 0) {
+                    frame.x = 0;
+                    changed = true;
+                }
+                if (frame.y < 0) {
+                    frame.y = 0;
+                    changed = true;
+                }
+
+                if (atlasLoaded) {
+                    changed |= renderAtlasPicker("Frame Atlas", atlases.animationAtlas, frame.x, frame.y, 2.0f);
+                }
+
+                if (ImGui::Button("Remove Frame")) {
+                    clip.frames.erase(clip.frames.begin() + frameIndex);
+                    changed = true;
+                    ImGui::PopID();
+                    break;
+                }
+
+                ImGui::Separator();
+                ImGui::PopID();
+            }
+
+            if (ImGui::Button("Add Frame")) {
+                clip.frames.push_back({0, 0});
+                changed = true;
+            }
+
+            if (ImGui::Button("Delete Animation")) {
+                animationFile.animations.erase(animationFile.animations.begin() + animationIndex);
+                changed = true;
+                ImGui::TreePop();
+                ImGui::PopID();
+                break;
+            }
+
+            ImGui::TreePop();
+        }
+
+        ImGui::PopID();
+    }
+
+    if (ImGui::Button("Add Animation")) {
+        AnimationClipRecord clip;
+        clip.name = "new_animation";
+        clip.frames.push_back({0, 0});
+        animationFile.animations.push_back(std::move(clip));
+        changed = true;
+    }
+
+    animationFile.dirty |= changed;
+
+    ImGui::Separator();
+    if (ImGui::Button("Save Animation File")) {
+        std::string errorMessage;
+        if (!validateAnimationFileRecord(animationFile, errorMessage)) {
+            dataStore.statusMessage = "Save failed: " + errorMessage;
+            dataStore.statusIsError = true;
+        } else if (saveAnimationFileRecord(animationFile, errorMessage)) {
+            animationFile.dirty = false;
+            dataStore.statusMessage = "Animation file saved: " + animationFile.filePath.filename().string();
+            dataStore.statusIsError = false;
+        } else {
+            dataStore.statusMessage = "Save failed: " + errorMessage;
+            dataStore.statusIsError = true;
+        }
+    }
+}
+
 void renderEntryList(const EditorSection selectedSection, const EditorDataStore& dataStore, int& selectedIndex) {
     if (ImGui::BeginChild("EntryList", ImVec2(300.0f, 0.0f), ImGuiChildFlags_Borders)) {
         ImGui::Text("%s", sectionLabel(selectedSection).c_str());
@@ -1308,7 +1798,7 @@ void renderEntryList(const EditorSection selectedSection, const EditorDataStore&
                     selectedIndex = index;
                 }
             }
-        } else {
+        } else if (selectedSection == EditorSection::Entity) {
             for (int index = 0; index < static_cast<int>(dataStore.machines.size()); ++index) {
                 const MachineRecord& machine = dataStore.machines[index];
                 const std::string label = machine.uniqueName.empty() ? machine.filePath.stem().string() : machine.uniqueName;
@@ -1320,12 +1810,26 @@ void renderEntryList(const EditorSection selectedSection, const EditorDataStore&
                     selectedIndex = index;
                 }
             }
+        } else if (selectedSection == EditorSection::Animations) {
+            for (int index = 0; index < static_cast<int>(dataStore.animationFiles.size()); ++index) {
+                const AnimationFileRecord& animationFile = dataStore.animationFiles[index];
+                const std::string label = animationFile.fileNameStem.empty()
+                    ? animationFile.filePath.stem().string()
+                    : animationFile.fileNameStem;
+                if (!matchesSearchTerm(label, searchTerm)) {
+                    continue;
+                }
+                const std::string displayLabel = label + dirtyMarker(animationFile);
+                if (ImGui::Selectable(displayLabel.c_str(), selectedIndex == index)) {
+                    selectedIndex = index;
+                }
+            }
         }
     }
     ImGui::EndChild();
 }
 
-void renderEntryToolbar(EditorDataStore& dataStore, const EditorSection selectedSection, std::array<int, 3>& selectedIndices) {
+void renderEntryToolbar(EditorDataStore& dataStore, const EditorSection selectedSection, std::array<int, kSectionCount>& selectedIndices) {
     if (ImGui::Button("New")) {
         createNewEntry(dataStore, selectedSection, selectedIndices);
     }
@@ -1346,7 +1850,11 @@ void renderEntryToolbar(EditorDataStore& dataStore, const EditorSection selected
     ImGui::Separator();
 }
 
-void renderDetailsPanel(const EditorSection selectedSection, EditorDataStore& dataStore, const int selectedIndex) {
+void renderDetailsPanel(const EditorSection selectedSection,
+                        EditorDataStore& dataStore,
+                        EditorAtlases& atlases,
+                        SDL_Renderer* renderer,
+                        const int selectedIndex) {
     ImGui::SameLine();
 
     if (ImGui::BeginChild("EntryDetails", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders)) {
@@ -1356,7 +1864,7 @@ void renderDetailsPanel(const EditorSection selectedSection, EditorDataStore& da
             } else {
                 ImGui::TextUnformatted(dataStore.items[selectedIndex].dirty ? "Status: Unsaved changes" : "Status: Saved");
                 ImGui::Separator();
-                renderItemDetails(dataStore.items[selectedIndex], dataStore);
+                renderItemDetails(dataStore.items[selectedIndex], dataStore, atlases);
             }
         } else if (selectedSection == EditorSection::Recipes) {
             if (selectedIndex < 0 || selectedIndex >= static_cast<int>(dataStore.recipes.size())) {
@@ -1366,13 +1874,21 @@ void renderDetailsPanel(const EditorSection selectedSection, EditorDataStore& da
                 ImGui::Separator();
                 renderRecipeDetails(dataStore.recipes[selectedIndex], dataStore);
             }
-        } else {
+        } else if (selectedSection == EditorSection::Entity) {
             if (selectedIndex < 0 || selectedIndex >= static_cast<int>(dataStore.machines.size())) {
                 ImGui::TextUnformatted("No entity selected");
             } else {
                 ImGui::TextUnformatted(dataStore.machines[selectedIndex].dirty ? "Status: Unsaved changes" : "Status: Saved");
                 ImGui::Separator();
-                renderMachineDetails(dataStore.machines[selectedIndex], dataStore);
+                renderMachineDetails(dataStore.machines[selectedIndex], dataStore, atlases);
+            }
+        } else if (selectedSection == EditorSection::Animations) {
+            if (selectedIndex < 0 || selectedIndex >= static_cast<int>(dataStore.animationFiles.size())) {
+                ImGui::TextUnformatted("No animation file selected");
+            } else {
+                ImGui::TextUnformatted(dataStore.animationFiles[selectedIndex].dirty ? "Status: Unsaved changes" : "Status: Saved");
+                ImGui::Separator();
+                renderAnimationDetails(dataStore.animationFiles[selectedIndex], dataStore, atlases, renderer);
             }
         }
     }
@@ -1424,8 +1940,10 @@ void renderStatusBar(const EditorDataStore& dataStore) {
 }
 
 void renderUnsavedChangesModal(EditorDataStore& dataStore,
+                               EditorAtlases& atlases,
+                               SDL_Renderer* renderer,
                                bool& running,
-                               std::array<int, 3>& selectedIndices) {
+                               std::array<int, kSectionCount>& selectedIndices) {
     if (dataStore.showUnsavedChangesModal) {
         ImGui::OpenPopup("UnsavedChanges");
     }
@@ -1441,7 +1959,7 @@ void renderUnsavedChangesModal(EditorDataStore& dataStore,
     if (ImGui::Button("Save All", ImVec2(120.0f, 0.0f))) {
         if (saveAllDirtyRecords(dataStore)) {
             if (dataStore.pendingAction == "reload") {
-                performReload(dataStore, selectedIndices);
+                performReload(dataStore, atlases, renderer, selectedIndices);
             } else if (dataStore.pendingAction == "delete") {
                 deleteCurrentEntry(dataStore, dataStore.pendingSection, selectedIndices);
             } else if (dataStore.pendingAction == "quit") {
@@ -1456,7 +1974,7 @@ void renderUnsavedChangesModal(EditorDataStore& dataStore,
     ImGui::SameLine();
     if (ImGui::Button("Discard", ImVec2(120.0f, 0.0f))) {
         if (dataStore.pendingAction == "reload") {
-            performReload(dataStore, selectedIndices);
+            performReload(dataStore, atlases, renderer, selectedIndices);
         } else if (dataStore.pendingAction == "delete") {
             deleteCurrentEntry(dataStore, dataStore.pendingSection, selectedIndices);
         } else if (dataStore.pendingAction == "quit") {
@@ -1481,7 +1999,9 @@ void renderUnsavedChangesModal(EditorDataStore& dataStore,
 
 void renderEditorView(const EditorSection selectedSection,
                       EditorDataStore& dataStore,
-                      std::array<int, 3>& selectedIndices,
+                      EditorAtlases& atlases,
+                      SDL_Renderer* renderer,
+                      std::array<int, kSectionCount>& selectedIndices,
                       bool& running) {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     const float menuBarHeight = ImGui::GetFrameHeight();
@@ -1505,14 +2025,13 @@ void renderEditorView(const EditorSection selectedSection,
     if (ImGui::Begin("EditorRoot", nullptr, windowFlags)) {
         renderEntryToolbar(dataStore, selectedSection, selectedIndices);
         renderEntryList(selectedSection, dataStore, selectedIndex);
-        renderDetailsPanel(selectedSection, dataStore, selectedIndex);
+        renderDetailsPanel(selectedSection, dataStore, atlases, renderer, selectedIndex);
     }
     ImGui::End();
 
     renderErrorPanel(dataStore);
     renderStatusBar(dataStore);
-    renderUnsavedChangesModal(dataStore, running, selectedIndices);
-}
+    renderUnsavedChangesModal(dataStore, atlases, renderer, running, selectedIndices);
 }
 
 int main(int argc, char* argv[]) {
@@ -1557,10 +2076,12 @@ int main(int argc, char* argv[]) {
 
     EditorSection selectedSection = EditorSection::Items;
     EditorDataStore dataStore = loadEditorData();
-    std::array<int, 3> selectedIndices{0, 0, 0};
+    EditorAtlases atlases = loadEditorAtlases(dataStore.projectRoot, renderer, dataStore.loadErrors);
+    std::array<int, kSectionCount> selectedIndices{0, 0, 0, 0};
     clampSelectedIndex(selectedIndices[0], dataStore.items.size());
     clampSelectedIndex(selectedIndices[1], dataStore.recipes.size());
     clampSelectedIndex(selectedIndices[2], dataStore.machines.size());
+    clampSelectedIndex(selectedIndices[3], dataStore.animationFiles.size());
     bool running = true;
 
     while (running) {
@@ -1581,8 +2102,8 @@ int main(int argc, char* argv[]) {
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        renderMainMenuBar(selectedSection, dataStore, selectedIndices);
-        renderEditorView(selectedSection, dataStore, selectedIndices, running);
+        renderMainMenuBar(selectedSection, dataStore, atlases, renderer, selectedIndices);
+        renderEditorView(selectedSection, dataStore, atlases, renderer, selectedIndices, running);
 
         ImGui::Render();
 
@@ -1596,6 +2117,9 @@ int main(int argc, char* argv[]) {
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
+    releaseAtlas(atlases.itemAtlas);
+    releaseAtlas(atlases.machineAtlas);
+    releaseAtlas(atlases.animationAtlas);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

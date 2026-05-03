@@ -10,6 +10,21 @@
 #include "../graphics/AnimationLoader.hpp"
 #include "../graphics/SpriteAtlas.hpp"
 
+namespace {
+    SpriteCoords getStraightConveyorPreviewCoords(Direction direction) {
+        switch (direction) {
+            case Direction::RIGHT:
+                return {0, 5};
+            case Direction::DOWN:
+                return {0, 6};
+            case Direction::LEFT:
+                return {7, 5};
+            case Direction::UP:
+            default:
+                return {2, 6};
+        }
+    }
+}
 
 World::World()
     : m_ConveyorManager(m_EntityManager,
@@ -39,7 +54,7 @@ void World::update(float deltaTime) {
     m_CollisionSystem.update(deltaTime, m_Positions, m_Velocities, m_Collisions, m_TileMap);
 
     m_CharacterStateSystem.update(m_CharacterStates, m_Velocities);
-    m_AnimationStateSystem.update(m_CharacterStates, m_AnimationControllers);
+    m_AnimationStateSystem.update(m_CharacterStates, m_ConveyorBelts, m_AnimationControllers);
     m_AnimationSystem.update(deltaTime, m_AnimationControllers);
     // m_MovementSystem.update(deltaTime, m_Positions, m_Velocities);
     m_CraftingSystem.update(deltaTime, m_CraftingMachines, m_MachineInventories, m_RecipeDatabase, m_ItemDatabase);
@@ -199,6 +214,10 @@ bool World::canPlaceItem(const ItemDefinition& item, int tileX, int tileY) const
         return false;
     }
 
+    if (item.placesConveyorBelt) {
+        return true;
+    }
+
     if (!item.placedMachineUniqueName.empty()) {
         const MachineDefinition* machineDefinition = m_MachineDatabase.getMachine(item.placedMachineUniqueName);
         if (!machineDefinition) {
@@ -245,9 +264,14 @@ bool World::canPlaceItem(const ItemDefinition& item, int tileX, int tileY) const
     return m_TileMap.canPlaceTileObject(tileX, tileY, item.placeableLayer, item.placeableWidthTiles, item.placeableHeightTiles);
 }
 
-bool World::placeItem(const ItemDefinition& item, int tileX, int tileY) {
+bool World::placeItem(const ItemDefinition& item, int tileX, int tileY, Direction direction) {
     if (!canPlaceItem(item, tileX, tileY)) {
         return false;
+    }
+
+    if (item.placesConveyorBelt) {
+        placeConveyorBelt(tileX, tileY, direction);
+        return true;
     }
 
     if (!item.placedMachineUniqueName.empty()) {
@@ -383,12 +407,17 @@ std::vector<std::tuple<std::string, int, int>> World::getMachinePlacementData() 
     return machines;
 }
 
-void World::renderPlacementPreview(const ItemDefinition& item, int tileX, int tileY) const {
+void World::renderPlacementPreview(const ItemDefinition& item, int tileX, int tileY, Direction direction) const {
     if (!m_Renderer || !item.isPlaceable) {
         return;
     }
 
     Sprite previewSprite = item.placeableSprite;
+    if (item.placesConveyorBelt) {
+        const SpriteCoords coords = getStraightConveyorPreviewCoords(direction);
+        previewSprite = m_ConveyorAtlas.getSprite(coords.x, coords.y);
+    }
+
     if (!item.placedMachineUniqueName.empty()) {
         const MachineDefinition* machineDefinition = m_MachineDatabase.getMachine(item.placedMachineUniqueName);
         if (!machineDefinition) {
@@ -438,11 +467,42 @@ std::vector<std::tuple<int, int, Direction>> World::getConveyorBeltData() const 
     return m_ConveyorManager.getConveyorBeltData();
 }
 
+Entity World::getHoveredMachine(float worldX, float worldY) const {
+    if (!m_ChunkManager.isWorldPositionLoaded(worldX, worldY, 32))
+        return 0;
+    const auto& entities = m_MachineEntities.getEntities();
+    for (Entity entity : entities) {
+        const auto* position = m_Positions.get(entity);
+        const auto* collisionComp = m_Collisions.get(entity);
+        if (!position || !collisionComp) {
+            continue;
+        }
+        SDL_FRect rect { position->position.x, position->position.y, collisionComp->bounds.w, collisionComp->bounds.h };
+        if (worldX >= rect.x && worldX <= rect.x + rect.w && worldY >= rect.y && worldY <= rect.y + rect.h) {
+            return entity;
+        }
+    }
+    return 0;
+}
+
+void World::renderMachineHighlight(Entity machine) const {
+    if (machine == 0) return;
+
+    const auto* position = m_Positions.get(machine);
+    const auto* collisionComp = m_Collisions.get(machine);
+    if (!position || !collisionComp) {
+        return;
+    }
+    SDL_FRect worldPos{position->position.x, position->position.y, collisionComp->bounds.w, collisionComp->bounds.h};
+    SDL_FRect screenPos{(worldPos.x - m_Camera.getX()) * m_Camera.getZoom(), (worldPos.y - m_Camera.getY()) * m_Camera.getZoom(), collisionComp->bounds.w * m_Camera.getZoom(), collisionComp->bounds.h * m_Camera.getZoom()};
+    m_Renderer->drawRect(screenPos, SDL_Color{255, 255, 0, 255});
+}
+
 void World::initializeWorld() {
 
     LOG_INFO("Loading animations...");
     AnimationLoader::createSpriteAtlas(m_Renderer);
-    AnimationLoader::loadPlayerAnimations(m_AnimationLibrary);
+    AnimationLoader::loadAnimations(m_Renderer, m_AnimationLibrary);
 
     LOG_INFO("Loading items...");
     m_ItemAtlas.createAtlas(m_Renderer, 32, 32, "assets/tilesets/items_sheet.png");
@@ -472,6 +532,7 @@ void World::initializeWorld() {
         inv->inventory.addItem(m_ItemDatabase.getItem("placeable_test"), 3);
         inv->inventory.addItem(m_ItemDatabase.getItem("basic_crafter_item"), 2);
         inv->inventory.addItem(m_ItemDatabase.getItem("basic_miner_item"), 2);
+        inv->inventory.addItem(m_ItemDatabase.getItem("conveyer_item"), 20);
         inv->inventory.addItem(m_ItemDatabase.getItem("test_container_item"), 2);
         inv->inventory.addItem(m_ItemDatabase.getItem("steel_ingot"), 3);
     }

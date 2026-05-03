@@ -7,4 +7,5 @@ struct SpriteComponent {
     float renderWidth = 0.0f;
     float renderHeight = 0.0f;
     bool centerInSourceRect = false;
+    bool visible = true;
 };

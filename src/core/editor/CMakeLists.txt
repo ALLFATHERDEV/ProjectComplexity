@@ -3,4 +3,6 @@ target_sources(ProjectComplexity PRIVATE
         TileMapEditor.hpp
         TileMapSerializer.cpp
         TileMapSerializer.hpp
+        ItemDebugEditor.cpp
+        ItemDebugEditor.hpp
 )

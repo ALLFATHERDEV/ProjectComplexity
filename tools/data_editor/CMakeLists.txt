@@ -5,6 +5,7 @@ set(DATA_EDITOR_SOURCE_FILES
 add_executable(ProjectComplexityEditor ${DATA_EDITOR_SOURCE_FILES})
 
 target_link_libraries(ProjectComplexityEditor PUBLIC SDL3::SDL3)
+target_link_libraries(ProjectComplexityEditor PUBLIC SDL3_image::SDL3_image)
 target_link_libraries(ProjectComplexityEditor PUBLIC imgui)
 target_link_libraries(ProjectComplexityEditor PUBLIC nlohmann_json::nlohmann_json)
 

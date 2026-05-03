@@ -6,10 +6,19 @@
 #include "Renderer.hpp"
 #include "Sprite.hpp"
 
+struct UVCoords {
+    float u0;
+    float v0;
+    float u1;
+    float v1;
+};
+
 class SpriteAtlas {
 public:
     void createAtlas(const Renderer* renderer, int spriteWidth, int spriteHeight, const char* fileName);
     Sprite getSprite(int x, int y) const;
+    UVCoords getUVCoordsOfSprite(int x, int y) const;
+    void clear();
 
     int getNumSpritesX() const { return m_NumSpritesX; }
     int getNumSpritesY() const { return m_NumSpritesY; }

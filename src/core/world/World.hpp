@@ -68,6 +68,7 @@ public:
     SpriteAtlas& getOreVeinAtlas() { return m_OreVeinsAtlas; }
     const std::vector<TilePaletteInfo>& getTilePalettes() const { return m_TilePalettes; }
     SpriteAtlas* getTilePalette(const std::string& name) const;
+    SpriteAtlas& getItemAtlas() { return m_ItemAtlas; }
     ItemDatabase& getItemDatabase() { return m_ItemDatabase; }
     const ItemDatabase& getItemDatabase() const { return m_ItemDatabase; }
     ChunkManager& getChunkManager() { return m_ChunkManager; }
@@ -80,8 +81,8 @@ public:
     Entity getPlayer() const { return m_Player; }
     Vec2f getPlayerPosition() const;
     bool canPlaceItem(const ItemDefinition& item, int tileX, int tileY) const;
-    bool placeItem(const ItemDefinition& item, int tileX, int tileY);
-    void renderPlacementPreview(const ItemDefinition& item, int tileX, int tileY) const;
+    bool placeItem(const ItemDefinition& item, int tileX, int tileY, Direction direction = Direction::RIGHT);
+    void renderPlacementPreview(const ItemDefinition& item, int tileX, int tileY, Direction direction = Direction::RIGHT) const;
     bool placeMachine(const std::string& machineUniqueName, int tileX, int tileY);
     void clearMachines();
     std::vector<std::tuple<std::string, int, int>> getMachinePlacementData() const;
@@ -89,6 +90,8 @@ public:
     void removeConveyorBelt(int tileX, int tileY);
     void clearConveyorBelts();
     std::vector<std::tuple<int, int, Direction>> getConveyorBeltData() const;
+    Entity getHoveredMachine(float worldX, float worldY) const;
+    void renderMachineHighlight(Entity machine) const;
 
 private:
     bool isAreaBlockedByEntity(const SDL_FRect& rect) const;

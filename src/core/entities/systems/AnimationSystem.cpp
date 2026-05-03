@@ -4,7 +4,7 @@ void AnimationSystem::update(float deltaTime, ComponentStorage<AnimationControll
     const auto& controllerArray = controllers.getRaw();
 
     for (auto& controller : controllerArray) {
-        if (controller.currentAnimation) {
+        if (controller.enabled && controller.currentAnimation) {
             controller.currentAnimation->update(deltaTime);
         }
     }

@@ -34,18 +34,24 @@ Entity EntityFactory::createPlayer(Vec2f position) const {
     m_Collisions.add(player, { SDL_FRect(4.0f, 8.0f, 24.0f, 24.0f), true, false });
 
     AnimationControllerComponent controller;
-    controller.animations[{ CharacterState::IDLE, Direction::DOWN }] = m_AnimationLibrary.get("player_idle_down");
-    controller.animations[{ CharacterState::IDLE, Direction::UP }] = m_AnimationLibrary.get("player_idle_up");
-    controller.animations[{ CharacterState::IDLE, Direction::RIGHT }] = m_AnimationLibrary.get("player_idle_right");
-    controller.animations[{ CharacterState::IDLE, Direction::LEFT }] = m_AnimationLibrary.get("player_idle_left");
+    controller.animations[{ "idle", true, Direction::DOWN }] = *m_AnimationLibrary.get("player_idle_down");
+    controller.animations[{ "idle", true, Direction::UP }] = *m_AnimationLibrary.get("player_idle_up");
+    controller.animations[{ "idle", true, Direction::RIGHT }] = *m_AnimationLibrary.get("player_idle_right");
+    controller.animations[{ "idle", true, Direction::LEFT }] = *m_AnimationLibrary.get("player_idle_left");
+    controller.animations[{ "walk", true, Direction::LEFT }] = *m_AnimationLibrary.get("player_walk_left");
+    controller.animations[{ "walk", true, Direction::RIGHT }] = *m_AnimationLibrary.get("player_walk_right");
+    controller.animations[{ "walk", true, Direction::UP }] = *m_AnimationLibrary.get("player_walk_up");
+    controller.animations[{ "walk", true, Direction::DOWN }] = *m_AnimationLibrary.get("player_walk_down");
 
-    controller.animations[{ CharacterState::WALK, Direction::LEFT }] = m_AnimationLibrary.get("player_walk_left");
-    controller.animations[{ CharacterState::WALK, Direction::RIGHT }] = m_AnimationLibrary.get("player_walk_right");
-    controller.animations[{ CharacterState::WALK, Direction::UP }] = m_AnimationLibrary.get("player_walk_up");
-    controller.animations[{ CharacterState::WALK, Direction::DOWN }] = m_AnimationLibrary.get("player_walk_down");
-
-    controller.currentAnimation = controller.animations[{ CharacterState::IDLE, Direction::DOWN }];
-    controller.currentAnimation->play();
+    controller.stateName = "idle";
+    controller.useDirection = true;
+    controller.direction = Direction::DOWN;
+    controller.sortOrder = 10;
+    auto idleDownIt = controller.animations.find({"idle", true, Direction::DOWN});
+    if (idleDownIt != controller.animations.end()) {
+        controller.currentAnimation = &idleDownIt->second;
+        controller.currentAnimation->play();
+    }
     m_AnimationControllers.add(player, controller);
 
     InventoryComponent inventory;
@@ -125,8 +131,24 @@ Entity EntityFactory::createConveyorBelt(Vec2f position, const SpriteAtlas& atla
     Sprite sprite = getConveyorSpriteForDirection(atlas, direction);
 
     m_Positions.add(belt, { position });
-    m_Sprites.add(belt, { sprite });
+    m_Sprites.add(belt, { sprite, 0, 0.0f, 0.0f, false, false });
     m_ConveyorBelts.add(belt, { direction });
+
+    AnimationControllerComponent controller;
+    if (const auto* animation = m_AnimationLibrary.get("right")) controller.animations[{"default", true, Direction::RIGHT}] = *animation;
+    if (const auto* animation = m_AnimationLibrary.get("down")) controller.animations[{"default", true, Direction::DOWN}] = *animation;
+    if (const auto* animation = m_AnimationLibrary.get("left")) controller.animations[{"default", true, Direction::LEFT}] = *animation;
+    if (const auto* animation = m_AnimationLibrary.get("up")) controller.animations[{"default", true, Direction::UP}] = *animation;
+    controller.stateName = "default";
+    controller.useDirection = true;
+    controller.direction = direction;
+    controller.sortOrder = 0;
+    auto directionIt = controller.animations.find({"default", true, direction});
+    if (directionIt != controller.animations.end()) {
+        controller.currentAnimation = &directionIt->second;
+        controller.currentAnimation->play();
+    }
+    m_AnimationControllers.add(belt, controller);
 
     return belt;
 }

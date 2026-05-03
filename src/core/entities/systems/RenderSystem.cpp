@@ -22,6 +22,7 @@ void RenderSystem::render(Renderer *renderer, const Camera2D& camera, const Chun
         auto* pos = positions.get(e);
         if (!pos) continue;
         if (!chunkManager.isWorldPositionLoaded(pos->position.x, pos->position.y, m_CellWidth)) continue;
+        if (!spriteArray[index].visible) continue;
 
         auto& sprite = spriteArray[index].sprite;
 

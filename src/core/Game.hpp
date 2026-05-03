@@ -3,6 +3,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "editor/ItemDebugEditor.hpp"
 #include "editor/TileMapEditor.hpp"
 #include "graphics/Renderer.hpp"
 #include "gui/GUISystem.hpp"
@@ -35,11 +36,16 @@ private:
     Renderer m_Renderer;
     World m_World;
     TileMapEditor m_TileMapEditor;
+    ItemDebugEditor m_ItemDebugEditor;
+    Direction m_SelectedPlaceableDirection = Direction::RIGHT;
 
     bool isDraggingPlaceableItem() const;
+    bool isDraggingConveyorPlaceableItem() const;
     bool tryPlaceDraggedItem(const SDL_Event& event);
     void renderDraggedPlaceablePreview();
     void renderDebugOverlay();
+    Vec2f getMouseWorldPosition();
+    void rotateSelectedPlaceableDirection();
 
 };
 

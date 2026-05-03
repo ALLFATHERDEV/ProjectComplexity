@@ -100,8 +100,16 @@ void Game::events() {
             m_TileMapEditor.setEnabled(!m_TileMapEditor.isEnabled());
         }
 
+        if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F2) {
+            m_ItemDebugEditor.setEnabled(!m_ItemDebugEditor.isEnabled());
+        }
+
         if (event.type == SDL_EVENT_MOUSE_WHEEL) {
             m_World.getCamera().addZoom(event.wheel.y * 0.1f);
+        }
+
+        if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_R && isDraggingConveyorPlaceableItem()) {
+            rotateSelectedPlaceableDirection();
         }
 
         if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) {
@@ -154,10 +162,17 @@ void Game::render() {
 
     SDL_RenderClear(m_Renderer.getSDLRenderer());
     m_World.render();
+
+    Vec2f worldPos = getMouseWorldPosition();
+    if (const Entity hovered = m_World.getHoveredMachine(worldPos.x, worldPos.y); hovered > 0) {
+        m_World.renderMachineHighlight(hovered);
+    }
+
     renderDraggedPlaceablePreview();
     m_GUISystem.render(&m_Renderer);
 
     m_TileMapEditor.renderImGui(m_World);
+    m_ItemDebugEditor.renderImGui(m_World);
     renderDebugOverlay();
 
     ImGui::Render();
@@ -173,6 +188,14 @@ bool Game::isDraggingPlaceableItem() const {
     }
 
     return m_GUIDragContext.draggedStack.item->isPlaceable;
+}
+
+bool Game::isDraggingConveyorPlaceableItem() const {
+    if (!isDraggingPlaceableItem()) {
+        return false;
+    }
+
+    return m_GUIDragContext.draggedStack.item->placesConveyorBelt;
 }
 
 bool Game::tryPlaceDraggedItem(const SDL_Event& event) {
@@ -197,13 +220,11 @@ bool Game::tryPlaceDraggedItem(const SDL_Event& event) {
     float mouseY = 0.0f;
     SDL_GetMouseState(&mouseX, &mouseY);
 
-    const Camera2D& camera = m_World.getCamera();
-    const float worldX = mouseX / camera.getZoom() + camera.getX();
-    const float worldY = mouseY / camera.getZoom() + camera.getY();
-    const int tileX = static_cast<int>(worldX) / 32;
-    const int tileY = static_cast<int>(worldY) / 32;
+    Vec2f worldPosition = getMouseWorldPosition();
+    const int tileX = static_cast<int>(worldPosition.x) / 32;
+    const int tileY = static_cast<int>(worldPosition.y) / 32;
 
-    if (!m_World.placeItem(*item, tileX, tileY)) {
+    if (!m_World.placeItem(*item, tileX, tileY, m_SelectedPlaceableDirection)) {
         return false;
     }
 
@@ -229,13 +250,11 @@ void Game::renderDraggedPlaceablePreview() {
     float mouseY = 0.0f;
     SDL_GetMouseState(&mouseX, &mouseY);
 
-    const Camera2D& camera = m_World.getCamera();
-    const float worldX = mouseX / camera.getZoom() + camera.getX();
-    const float worldY = mouseY / camera.getZoom() + camera.getY();
-    const int tileX = static_cast<int>(worldX) / 32;
-    const int tileY = static_cast<int>(worldY) / 32;
+    Vec2f worldPosition = getMouseWorldPosition();
+    const int tileX = static_cast<int>(worldPosition.x) / 32;
+    const int tileY = static_cast<int>(worldPosition.y) / 32;
 
-    m_World.renderPlacementPreview(*item, tileX, tileY);
+    m_World.renderPlacementPreview(*item, tileX, tileY, m_SelectedPlaceableDirection);
 }
 
 void Game::renderDebugOverlay() {
@@ -262,11 +281,40 @@ void Game::renderDebugOverlay() {
         ImVec2(1.0f, 1.0f)
     );
 
+    Vec2f mouseWorldPosition = getMouseWorldPosition();
+
     if (ImGui::Begin("DebugOverlay", nullptr, windowFlags)) {
         ImGui::Text("Grid: %d, %d", tileX, tileY);
         ImGui::Text("Chunk: %d, %d", chunkX, chunkY);
         ImGui::Text("Zoom: %.2f", zoom);
+        ImGui::Text("Hovered Entity: %d", m_World.getHoveredMachine(mouseWorldPosition.x, mouseWorldPosition.y));
     }
     ImGui::End();
+}
+
+Vec2f Game::getMouseWorldPosition() {
+    float mouseX;
+    float mouseY;
+    SDL_GetMouseState(&mouseX, &mouseY);
+    Camera2D& camera = m_World.getCamera();
+    return Vec2f(mouseX / camera.getZoom() + camera.getX(), mouseY / camera.getZoom() + camera.getY());
+}
+
+void Game::rotateSelectedPlaceableDirection() {
+    switch (m_SelectedPlaceableDirection) {
+        case Direction::RIGHT:
+            m_SelectedPlaceableDirection = Direction::DOWN;
+            break;
+        case Direction::DOWN:
+            m_SelectedPlaceableDirection = Direction::LEFT;
+            break;
+        case Direction::LEFT:
+            m_SelectedPlaceableDirection = Direction::UP;
+            break;
+        case Direction::UP:
+        default:
+            m_SelectedPlaceableDirection = Direction::RIGHT;
+            break;
+    }
 }
 

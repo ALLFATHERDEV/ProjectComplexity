@@ -14,8 +14,8 @@ void Camera2D::move(const Vec2f &offset) {
 }
 
 void Camera2D::setZoom(float zoom) {
-    if (zoom < 0.05f) {
-        zoom = 0.05f;
+    if (zoom < 1.0f) {
+        zoom = 1.0f;
     }
 
     if (zoom > 2.0f) {
