@@ -17,7 +17,10 @@ public:
 
     enum class PlacementMode {
         Tile,
-        Conveyor
+        Conveyor,
+        FluidPipe,
+        FluidTank,
+        FluidPump
     };
 
     void addTilePalette(const std::string& name, SpriteAtlas* atlas);
@@ -43,6 +46,8 @@ private:
     int m_SelectedLayer = 0;
     bool m_SelectedBlocking = false;
     Direction m_SelectedConveyorDirection = Direction::RIGHT;
+    Direction m_SelectedFluidPipeDirection = Direction::RIGHT;
+    Direction m_SelectedFluidPumpDirection = Direction::RIGHT;
 
     int m_cellWidth = 32;
     int m_CellHeight = 32;

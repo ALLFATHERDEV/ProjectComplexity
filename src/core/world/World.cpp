@@ -37,12 +37,37 @@ World::World()
                         m_Collisions,
                         m_ConveyorBelts,
                         m_Inventories,
+                        m_FluidPipes,
+                        m_FluidTanks,
+                        m_FluidPumps,
+                        m_FluidPorts,
                         m_MachineEntities,
                         m_MachineInventories,
                         m_CraftingMachines,
                         m_Miners,
                         m_Interactions,
-                        m_AnimationLibrary) {
+                        m_AnimationLibrary),
+      m_FluidManager(m_EntityManager,
+                     m_Positions,
+                     m_FluidPipes,
+                     m_FluidTanks,
+                     m_FluidPumps,
+                     m_FluidPorts,
+                     m_Sprites,
+                     m_Velocities,
+                     m_Inputs,
+                     m_CharacterStates,
+                     m_AnimationControllers,
+                     m_Collisions,
+                     m_ConveyorBelts,
+                     m_Inventories,
+                     m_MachineEntities,
+                     m_MachineInventories,
+                     m_CraftingMachines,
+                     m_Miners,
+                     m_Interactions,
+                     m_AnimationLibrary,
+                     m_FluidSystem) {
 
 }
 
@@ -58,6 +83,7 @@ void World::update(float deltaTime) {
     m_AnimationSystem.update(deltaTime, m_AnimationControllers);
     // m_MovementSystem.update(deltaTime, m_Positions, m_Velocities);
     m_CraftingSystem.update(deltaTime, m_CraftingMachines, m_MachineInventories, m_RecipeDatabase, m_ItemDatabase);
+    m_FluidSystem.update(deltaTime, m_Positions, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts);
     m_MiningSystem.update(deltaTime, m_Miners, m_Positions, m_MachineInventories, m_TileMap, m_TileMetadataDatabase, m_ItemDatabase);
     m_ConveyorSystem.update(deltaTime, m_EntityManager, m_Player, m_Positions, m_Sprites, m_ConveyorBelts, m_ConveyorItems, m_Inventories, m_MachineInventories);
 
@@ -96,6 +122,9 @@ void World::render() {
 
     m_RenderSystem.render(m_Renderer, m_Camera, m_ChunkManager, m_Positions, m_Sprites);
     AnimatedRenderSystem::render(m_Renderer, m_Camera, m_ChunkManager, m_Positions, m_AnimationControllers);
+    if (m_Renderer) {
+        m_FluidManager.renderDebug(*m_Renderer, m_Camera, m_ChunkManager);
+    }
 }
 
 void World::handleInput(SDL_Event &event) {
@@ -290,6 +319,10 @@ bool World::placeItem(const ItemDefinition& item, int tileX, int tileY, Directio
             m_Collisions,
             m_ConveyorBelts,
             m_Inventories,
+            m_FluidPipes,
+            m_FluidTanks,
+            m_FluidPumps,
+            m_FluidPorts,
             m_MachineEntities,
             m_MachineInventories,
             m_CraftingMachines,
@@ -342,6 +375,10 @@ bool World::placeMachine(const std::string& machineUniqueName, int tileX, int ti
         m_Collisions,
         m_ConveyorBelts,
         m_Inventories,
+        m_FluidPipes,
+        m_FluidTanks,
+        m_FluidPumps,
+        m_FluidPorts,
         m_MachineEntities,
         m_MachineInventories,
         m_CraftingMachines,
@@ -459,6 +496,34 @@ void World::removeConveyorBelt(int tileX, int tileY) {
     m_ConveyorManager.removeConveyorBelt(tileX, tileY);
 }
 
+void World::placeFluidPipe(int tileX, int tileY, Direction direction) {
+    m_FluidManager.placeFluidPipe(tileX, tileY, direction);
+}
+
+void World::removeFluidPipe(int tileX, int tileY) {
+    m_FluidManager.removeFluidPipe(tileX, tileY);
+}
+
+void World::placeFluidTank(int tileX, int tileY) {
+    m_FluidManager.placeFluidTank(tileX, tileY);
+}
+
+void World::removeFluidTank(int tileX, int tileY) {
+    m_FluidManager.removeFluidTank(tileX, tileY);
+}
+
+void World::placeFluidPump(int tileX, int tileY, Direction direction) {
+    m_FluidManager.placeFluidPump(tileX, tileY, direction);
+}
+
+void World::removeFluidPump(int tileX, int tileY) {
+    m_FluidManager.removeFluidPump(tileX, tileY);
+}
+
+bool World::addDebugFluidToTank(int tileX, int tileY, float amount) {
+    return m_FluidManager.addDebugFluidToTank(tileX, tileY, amount);
+}
+
 void World::clearConveyorBelts() {
     m_ConveyorManager.clearConveyorBelts();
 }
@@ -518,7 +583,7 @@ void World::initializeWorld() {
     m_TileMetadataDatabase.loadFromFolder("assets/tilesets");
 
     LOG_INFO("Creating entities...");
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_MachineEntities, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts, m_MachineEntities, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
 
     m_Player = factory.createPlayer({ 30.0f * 32.0f, 14.0f * 32.0f });
     m_ChunkManager.update({100.0f, 100.0f}, 32);
@@ -540,6 +605,10 @@ void World::initializeWorld() {
     LOG_INFO("Loading conveyor atlas...");
     m_ConveyorAtlas.createAtlas(m_Renderer, 32, 32, "assets/conveyor_sprites.png");
     m_ConveyorManager.setAtlas(&m_ConveyorAtlas);
+
+    LOG_INFO("Loading fluid atlas...");
+    m_FluidAtlas.createAtlas(m_Renderer, 32, 32, "assets/pipes.png");
+    m_FluidManager.setAtlas(&m_FluidAtlas);
 
     m_OreVeinsAtlas.createAtlas(m_Renderer, 32, 32, "assets/tilesets/ore_veins.png");
 

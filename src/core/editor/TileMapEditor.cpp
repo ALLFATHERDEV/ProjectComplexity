@@ -49,8 +49,14 @@ void TileMapEditor::update(const SDL_Event &event, World& world, const Camera2D 
 
             Sprite sprite = palette->atlas->getSprite(m_SelectedTileX, m_SelectedTileY);
             world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, palette->name, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
-        } else {
+        } else if (m_PlacementMode == PlacementMode::Conveyor) {
             world.placeConveyorBelt(tileX, tileY, m_SelectedConveyorDirection);
+        } else if (m_PlacementMode == PlacementMode::FluidPipe) {
+            world.placeFluidPipe(tileX, tileY, m_SelectedFluidPipeDirection);
+        } else if (m_PlacementMode == PlacementMode::FluidTank) {
+            world.placeFluidTank(tileX, tileY);
+        } else if (m_PlacementMode == PlacementMode::FluidPump) {
+            world.placeFluidPump(tileX, tileY, m_SelectedFluidPumpDirection);
         }
         // const TilePaletteEntry* palette = getSelectedTilePalette();
         // if (!palette || !palette->atlas) {
@@ -64,8 +70,14 @@ void TileMapEditor::update(const SDL_Event &event, World& world, const Camera2D 
     if (event.button.button == SDL_BUTTON_RIGHT) {
         if (m_PlacementMode == PlacementMode::Tile) {
             world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
-        } else {
+        } else if (m_PlacementMode == PlacementMode::Conveyor) {
             world.removeConveyorBelt(tileX, tileY);
+        } else if (m_PlacementMode == PlacementMode::FluidPipe) {
+            world.removeFluidPipe(tileX, tileY);
+        } else if (m_PlacementMode == PlacementMode::FluidTank) {
+            world.removeFluidTank(tileX, tileY);
+        } else if (m_PlacementMode == PlacementMode::FluidPump) {
+            world.removeFluidPump(tileX, tileY);
         }
         // world.getTileMap().clearTile(tileX, tileY, m_SelectedLayer);
     }
@@ -86,6 +98,12 @@ void TileMapEditor::renderImGui(World& world) {
     ImGui::RadioButton("Tiles", &placementMode, static_cast<int>(PlacementMode::Tile));
     ImGui::SameLine();
     ImGui::RadioButton("Conveyor", &placementMode, static_cast<int>(PlacementMode::Conveyor));
+    ImGui::SameLine();
+    ImGui::RadioButton("Fluid Pipe", &placementMode, static_cast<int>(PlacementMode::FluidPipe));
+    ImGui::SameLine();
+    ImGui::RadioButton("Fluid Tank", &placementMode, static_cast<int>(PlacementMode::FluidTank));
+    ImGui::SameLine();
+    ImGui::RadioButton("Fluid Pump", &placementMode, static_cast<int>(PlacementMode::FluidPump));
     m_PlacementMode = static_cast<PlacementMode>(placementMode);
 
     if (m_PlacementMode == PlacementMode::Tile) {
@@ -105,7 +123,7 @@ void TileMapEditor::renderImGui(World& world) {
 
         ImGui::InputInt("Layer", &m_SelectedLayer);
         ImGui::Checkbox("Blocking", &m_SelectedBlocking);
-    } else {
+    } else if (m_PlacementMode == PlacementMode::Conveyor) {
         int selectedDirection = static_cast<int>(m_SelectedConveyorDirection);
         ImGui::RadioButton("Right", &selectedDirection, static_cast<int>(Direction::RIGHT));
         ImGui::SameLine();
@@ -115,6 +133,31 @@ void TileMapEditor::renderImGui(World& world) {
         ImGui::SameLine();
         ImGui::RadioButton("Up", &selectedDirection, static_cast<int>(Direction::UP));
         m_SelectedConveyorDirection = static_cast<Direction>(selectedDirection);
+    } else if (m_PlacementMode == PlacementMode::FluidPipe) {
+        int selectedDirection = static_cast<int>(m_SelectedFluidPipeDirection);
+        ImGui::RadioButton("Right", &selectedDirection, static_cast<int>(Direction::RIGHT));
+        ImGui::SameLine();
+        ImGui::RadioButton("Down", &selectedDirection, static_cast<int>(Direction::DOWN));
+        ImGui::SameLine();
+        ImGui::RadioButton("Left", &selectedDirection, static_cast<int>(Direction::LEFT));
+        ImGui::SameLine();
+        ImGui::RadioButton("Up", &selectedDirection, static_cast<int>(Direction::UP));
+        m_SelectedFluidPipeDirection = static_cast<Direction>(selectedDirection);
+        ImGui::Text("Left click: place pipe");
+        ImGui::Text("Right click: remove pipe");
+    } else if (m_PlacementMode == PlacementMode::FluidTank) {
+        ImGui::Text("Left click: place tank");
+        ImGui::Text("Right click: remove tank");
+    } else if (m_PlacementMode == PlacementMode::FluidPump) {
+        int selectedDirection = static_cast<int>(m_SelectedFluidPumpDirection);
+        ImGui::RadioButton("Right", &selectedDirection, static_cast<int>(Direction::RIGHT));
+        ImGui::SameLine();
+        ImGui::RadioButton("Down", &selectedDirection, static_cast<int>(Direction::DOWN));
+        ImGui::SameLine();
+        ImGui::RadioButton("Left", &selectedDirection, static_cast<int>(Direction::LEFT));
+        ImGui::SameLine();
+        ImGui::RadioButton("Up", &selectedDirection, static_cast<int>(Direction::UP));
+        m_SelectedFluidPumpDirection = static_cast<Direction>(selectedDirection);
     }
 
     if (ImGui::Button("Save Map")) {

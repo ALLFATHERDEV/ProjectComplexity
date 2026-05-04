@@ -171,3 +171,36 @@ Entity EntityFactory::createStorageContainer(Vec2f position, Sprite sprite, Vec2
     m_Interactions.add(container, interaction);
     return container;
 }
+
+Entity EntityFactory::createFluidPipe(Vec2f position, Sprite sprite, Direction direction) const {
+    Entity pipe = m_EntityManager.createEntity();
+    m_Positions.add(pipe, { position });
+    m_Sprites.add(pipe, { sprite, 0, 32.0f, 32.0f, false, true });
+
+    FluidPipeComponent pipeComponent;
+    pipeComponent.direction = direction;
+    const bool isVertical = direction == Direction::UP || direction == Direction::DOWN;
+    pipeComponent.connectUp = isVertical;
+    pipeComponent.connectDown = isVertical;
+    pipeComponent.connectLeft = !isVertical;
+    pipeComponent.connectRight = !isVertical;
+    m_FluidPipes.add(pipe, pipeComponent);
+    return pipe;
+}
+
+Entity EntityFactory::createFluidTank(Vec2f position, Sprite sprite) const {
+    Entity tank = m_EntityManager.createEntity();
+    m_Positions.add(tank, { position });
+    m_Sprites.add(tank, { sprite, 0, 32.0f, 32.0f, false, true });
+    m_FluidTanks.add(tank, {});
+    return tank;
+}
+
+Entity EntityFactory::createFluidPump(Vec2f position, Sprite sprite, Direction outputDirection, const FluidDefinition* outputFluid, float outputPerSecond) const {
+    Entity pump = m_EntityManager.createEntity();
+    m_Positions.add(pump, { position });
+    m_Sprites.add(pump, { sprite, 0, 32.0f, 32.0f, false, true });
+    m_FluidPumps.add(pump, { outputFluid, outputPerSecond });
+    m_FluidPorts.add(pump, { FluidPortType::OUTPUT, outputDirection, outputPerSecond });
+    return pump;
+}

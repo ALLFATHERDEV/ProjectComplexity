@@ -6,6 +6,10 @@
 #include "../entities/component/CollisionComponent.hpp"
 #include "../entities/component/ConveyorBeltComponent.hpp"
 #include "../entities/component/CraftingMachineComponent.hpp"
+#include "../entities/component/FluidPipeComponent.hpp"
+#include "../entities/component/FluidPortComponent.hpp"
+#include "../entities/component/FluidPumpComponent.hpp"
+#include "../entities/component/FluidTankComponent.hpp"
 #include "../entities/component/InputComponent.hpp"
 #include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
@@ -40,6 +44,10 @@ public:
                     ComponentStorage<CollisionComponent>& collisions,
                     ComponentStorage<ConveyorBeltComponent>& conveyorBelts,
                     ComponentStorage<InventoryComponent>& inventories,
+                    ComponentStorage<FluidPipeComponent>& fluidPipes,
+                    ComponentStorage<FluidTankComponent>& fluidTanks,
+                    ComponentStorage<FluidPumpComponent>& fluidPumps,
+                    ComponentStorage<FluidPortComponent>& fluidPorts,
                     ComponentStorage<MachineComponent>& machines,
                     ComponentStorage<MachineInventoryComponent>& machineInventories,
                     ComponentStorage<CraftingMachineComponent>& craftingMachines,
@@ -72,6 +80,10 @@ private:
     ComponentStorage<CollisionComponent>& m_Collisions;
     ComponentStorage<ConveyorBeltComponent>& m_ConveyorBelts;
     ComponentStorage<InventoryComponent>& m_Inventories;
+    ComponentStorage<FluidPipeComponent>& m_FluidPipes;
+    ComponentStorage<FluidTankComponent>& m_FluidTanks;
+    ComponentStorage<FluidPumpComponent>& m_FluidPumps;
+    ComponentStorage<FluidPortComponent>& m_FluidPorts;
     ComponentStorage<MachineComponent>& m_Machines;
     ComponentStorage<MachineInventoryComponent>& m_MachineInventories;
     ComponentStorage<CraftingMachineComponent>& m_CraftingMachines;

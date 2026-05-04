@@ -44,5 +44,11 @@ target_sources(ProjectComplexity PRIVATE
         component/InteractionComponent.hpp
         systems/InteractionSystem.cpp
         systems/InteractionSystem.hpp
+        component/FluidPipeComponent.hpp
+        component/FluidTankComponent.hpp
+        component/FluidPortComponent.hpp
+        component/FluidPumpComponent.hpp
+        systems/FluidSystem.cpp
+        systems/FluidSystem.hpp
 
 )

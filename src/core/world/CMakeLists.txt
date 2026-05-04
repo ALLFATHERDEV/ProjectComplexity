@@ -7,6 +7,8 @@ target_sources(ProjectComplexity PRIVATE
         ChunkManager.hpp
         ConveyorManager.cpp
         ConveyorManager.hpp
+        FluidManager.cpp
+        FluidManager.hpp
         TileMapGenerator.cpp
         TileMapGenerator.hpp
         AnimationLibrary.hpp

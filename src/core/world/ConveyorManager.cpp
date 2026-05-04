@@ -78,6 +78,10 @@ ConveyorManager::ConveyorManager(EntityManager& entityManager,
                                  ComponentStorage<CollisionComponent>& collisions,
                                  ComponentStorage<ConveyorBeltComponent>& conveyorBelts,
                                  ComponentStorage<InventoryComponent>& inventories,
+                                 ComponentStorage<FluidPipeComponent>& fluidPipes,
+                                 ComponentStorage<FluidTankComponent>& fluidTanks,
+                                 ComponentStorage<FluidPumpComponent>& fluidPumps,
+                                 ComponentStorage<FluidPortComponent>& fluidPorts,
                                  ComponentStorage<MachineComponent>& machines,
                                  ComponentStorage<MachineInventoryComponent>& machineInventories,
                                  ComponentStorage<CraftingMachineComponent>& craftingMachines,
@@ -94,6 +98,10 @@ ConveyorManager::ConveyorManager(EntityManager& entityManager,
       m_Collisions(collisions),
       m_ConveyorBelts(conveyorBelts),
       m_Inventories(inventories),
+      m_FluidPipes(fluidPipes),
+      m_FluidTanks(fluidTanks),
+      m_FluidPumps(fluidPumps),
+      m_FluidPorts(fluidPorts),
       m_Machines(machines),
       m_MachineInventories(machineInventories),
       m_CraftingMachines(craftingMachines),
@@ -221,7 +229,7 @@ void ConveyorManager::placeConveyorBelt(int tileX, int tileY, Direction directio
 
     removeConveyorBelt(tileX, tileY);
 
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_Machines, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts, m_Machines, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
 
     const float worldX = static_cast<float>(tileX) * kTileSize;
     const float worldY = static_cast<float>(tileY) * kTileSize;

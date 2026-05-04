@@ -104,6 +104,13 @@ void Game::events() {
             m_ItemDebugEditor.setEnabled(!m_ItemDebugEditor.isEnabled());
         }
 
+        if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F3) {
+            const Vec2f mouseWorldPosition = getMouseWorldPosition();
+            const int mouseTileX = static_cast<int>(mouseWorldPosition.x) / 32;
+            const int mouseTileY = static_cast<int>(mouseWorldPosition.y) / 32;
+            m_World.addDebugFluidToTank(mouseTileX, mouseTileY, 250.0f);
+        }
+
         if (event.type == SDL_EVENT_MOUSE_WHEEL) {
             m_World.getCamera().addZoom(event.wheel.y * 0.1f);
         }
@@ -265,6 +272,7 @@ void Game::renderDebugOverlay() {
     const int chunkX = chunkManager.getCenterChunkX();
     const int chunkY = chunkManager.getCenterChunkY();
     const float zoom = m_World.getCamera().getZoom();
+    const std::vector<FluidNetwork>& fluidNetworks = m_World.getFluidSystem().getNetworks();
 
     constexpr ImGuiWindowFlags windowFlags =
         ImGuiWindowFlags_NoDecoration |
@@ -288,6 +296,17 @@ void Game::renderDebugOverlay() {
         ImGui::Text("Chunk: %d, %d", chunkX, chunkY);
         ImGui::Text("Zoom: %.2f", zoom);
         ImGui::Text("Hovered Entity: %d", m_World.getHoveredMachine(mouseWorldPosition.x, mouseWorldPosition.y));
+        ImGui::Text("Fluid Networks: %d", static_cast<int>(fluidNetworks.size()));
+        for (const FluidNetwork& network : fluidNetworks) {
+            ImGui::Text("Net %d P:%d T:%d Cap:%.0f Amt:%.0f %s",
+                        network.id,
+                        static_cast<int>(network.pipes.size()),
+                        static_cast<int>(network.tanks.size()),
+                        network.totalCapacity,
+                        network.fluid.amount,
+                        network.fluid.fluid ? network.fluid.fluid->displayName.c_str() : "Empty");
+        }
+        ImGui::Text("F3: Fill hovered tank with Water");
     }
     ImGui::End();
 }

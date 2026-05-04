@@ -6,6 +6,7 @@
 #include "AnimationLibrary.hpp"
 #include "ChunkManager.hpp"
 #include "ConveyorManager.hpp"
+#include "FluidManager.hpp"
 #include "../entities/ComponentStorage.hpp"
 #include "../entities/EntityManager.hpp"
 #include "../entities/component/AnimatedSpriteComponent.hpp"
@@ -13,6 +14,10 @@
 #include "../entities/component/ConveyorBeltComponent.hpp"
 #include "../entities/component/ConveyorItemComponent.hpp"
 #include "../entities/component/CraftingMachineComponent.hpp"
+#include "../entities/component/FluidPipeComponent.hpp"
+#include "../entities/component/FluidPumpComponent.hpp"
+#include "../entities/component/FluidPortComponent.hpp"
+#include "../entities/component/FluidTankComponent.hpp"
 #include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
 #include "../entities/component/MachineComponent.hpp"
@@ -27,6 +32,7 @@
 #include "../entities/systems/CollisionSystem.hpp"
 #include "../entities/systems/ConveyorSystem.hpp"
 #include "../entities/systems/CraftingSystem.hpp"
+#include "../entities/systems/FluidSystem.hpp"
 #include "../entities/systems/InputSystem.hpp"
 #include "../entities/systems/InteractionSystem.hpp"
 #include "../entities/systems/MovementInputSystem.hpp"
@@ -77,6 +83,12 @@ public:
     ComponentStorage<MachineInventoryComponent>& getMachineInventories() { return m_MachineInventories; }
     ComponentStorage<CraftingMachineComponent>& getCraftingMachines() { return m_CraftingMachines; }
     ComponentStorage<MinerComponent>& getMiners() { return m_Miners; }
+    ComponentStorage<FluidPipeComponent>& getFluidPipes() { return m_FluidPipes; }
+    ComponentStorage<FluidTankComponent>& getFluidTanks() { return m_FluidTanks; }
+    ComponentStorage<FluidPumpComponent>& getFluidPumps() { return m_FluidPumps; }
+    ComponentStorage<FluidPortComponent>& getFluidPorts() { return m_FluidPorts; }
+    FluidSystem& getFluidSystem() { return m_FluidSystem; }
+    const FluidSystem& getFluidSystem() const { return m_FluidSystem; }
     const RecipeDatabase& getRecipeDatabase() const { return m_RecipeDatabase; }
     Entity getPlayer() const { return m_Player; }
     Vec2f getPlayerPosition() const;
@@ -88,6 +100,13 @@ public:
     std::vector<std::tuple<std::string, int, int>> getMachinePlacementData() const;
     void placeConveyorBelt(int tileX, int tileY, Direction direction);
     void removeConveyorBelt(int tileX, int tileY);
+    void placeFluidPipe(int tileX, int tileY, Direction direction = Direction::RIGHT);
+    void removeFluidPipe(int tileX, int tileY);
+    void placeFluidTank(int tileX, int tileY);
+    void removeFluidTank(int tileX, int tileY);
+    void placeFluidPump(int tileX, int tileY, Direction direction);
+    void removeFluidPump(int tileX, int tileY);
+    bool addDebugFluidToTank(int tileX, int tileY, float amount);
     void clearConveyorBelts();
     std::vector<std::tuple<int, int, Direction>> getConveyorBeltData() const;
     Entity getHoveredMachine(float worldX, float worldY) const;
@@ -107,6 +126,7 @@ private:
     TileMap m_TileMap;
     SpriteAtlas m_TileMapAtlas;
     SpriteAtlas m_ConveyorAtlas;
+    SpriteAtlas m_FluidAtlas;
     SpriteAtlas m_OreVeinsAtlas;
     std::vector<TilePaletteInfo> m_TilePalettes;
     ChunkManager m_ChunkManager;
@@ -129,6 +149,10 @@ private:
     ComponentStorage<CollisionComponent> m_Collisions;
     ComponentStorage<ConveyorBeltComponent> m_ConveyorBelts;
     ComponentStorage<ConveyorItemComponent> m_ConveyorItems;
+    ComponentStorage<FluidPipeComponent> m_FluidPipes;
+    ComponentStorage<FluidTankComponent> m_FluidTanks;
+    ComponentStorage<FluidPumpComponent> m_FluidPumps;
+    ComponentStorage<FluidPortComponent> m_FluidPorts;
     ComponentStorage<InventoryComponent> m_Inventories;
     ComponentStorage<MachineComponent> m_MachineEntities;
     ComponentStorage<MachineInventoryComponent> m_MachineInventories;
@@ -151,6 +175,8 @@ private:
     CollisionSystem m_CollisionSystem;
     ConveyorSystem m_ConveyorSystem;
     CraftingSystem m_CraftingSystem;
+    FluidSystem m_FluidSystem;
+    FluidManager m_FluidManager;
     MiningSystem m_MiningSystem;
     InteractionSystem m_InteractionSystem;
 
