@@ -1,0 +1,16 @@
+{
+  "displayName": "Fluid Tank",
+  "fuelValue": 0.0,
+  "iconAtlasX": 3,
+  "iconAtlasY": 66,
+  "id": 11,
+  "isPlaceable": true,
+  "maxStackSize": 5,
+  "placeableBlocking": true,
+  "placeableHeightTiles": 1,
+  "placeableLayer": 1,
+  "placeableTexturePath": "assets/Overworld_Tileset.png",
+  "placeableWidthTiles": 1,
+  "placedMachineUniqueName": "fluid_tank",
+  "uniqueName": "fluid_tank_item"
+}

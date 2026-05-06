@@ -14,6 +14,8 @@
 #include "../entities/component/FluidPortComponent.hpp"
 #include "../entities/component/FluidPumpComponent.hpp"
 #include "../entities/component/FluidTankComponent.hpp"
+#include "../entities/component/MachineFluidComponent.hpp"
+#include "../entities/component/MachineFluidPortLinkComponent.hpp"
 #include "../entities/component/MachineComponent.hpp"
 #include "../entities/component/MinerComponent.hpp"
 #include "../entities/component/PositionComponent.hpp"
@@ -39,6 +41,8 @@ public:
                   ComponentStorage<FluidTankComponent> &fluidTanks,
                   ComponentStorage<FluidPumpComponent> &fluidPumps,
                   ComponentStorage<FluidPortComponent> &fluidPorts,
+                  ComponentStorage<MachineFluidComponent>& machineFluids,
+                  ComponentStorage<MachineFluidPortLinkComponent>& machineFluidPortLinks,
                   ComponentStorage<MachineComponent> &machines,
                   ComponentStorage<MachineInventoryComponent> &machineInventories,
                   ComponentStorage<CraftingMachineComponent> &craftingMachines,
@@ -58,6 +62,8 @@ public:
                                                         m_FluidTanks(fluidTanks),
                                                         m_FluidPumps(fluidPumps),
                                                         m_FluidPorts(fluidPorts),
+                                                        m_MachineFluids(machineFluids),
+                                                        m_MachineFluidPortLinks(machineFluidPortLinks),
                                                         m_Machines(machines),
                                                         m_MachineInventories(machineInventories),
                                                         m_CraftingMachines(craftingMachines),
@@ -69,6 +75,8 @@ public:
     Entity createPlayer(Vec2f position) const;
     Entity createCraftingMachine(Vec2f position, Sprite sprite, const MachineDefinition &machineDefinition) const;
     Entity createMiner(Vec2f position, Sprite sprite, const MinerMachineDefinition &machineDefinition) const;
+    Entity createFluidTankMachine(Vec2f position, Sprite sprite, const FluidTankMachineDefinition& machineDefinition) const;
+    Entity createFluidPumpMachine(Vec2f position, Sprite sprite, const FluidPumpMachineDefinition& machineDefinition, Direction outputDirection, const FluidDefinition* outputFluid) const;
     Entity createConveyorBelt(Vec2f position, const SpriteAtlas &atlas, Direction direction) const;
     Entity createStorageContainer(Vec2f position, Sprite sprite, Vec2i containerInventorySize, Vec2i sizeTiles, bool isBlocking) const;
     Entity createFluidPipe(Vec2f position, Sprite sprite, Direction direction) const;
@@ -91,6 +99,8 @@ private:
     ComponentStorage<FluidTankComponent> &m_FluidTanks;
     ComponentStorage<FluidPumpComponent> &m_FluidPumps;
     ComponentStorage<FluidPortComponent> &m_FluidPorts;
+    ComponentStorage<MachineFluidComponent>& m_MachineFluids;
+    ComponentStorage<MachineFluidPortLinkComponent>& m_MachineFluidPortLinks;
     ComponentStorage<MachineComponent> &m_Machines;
     ComponentStorage<MachineInventoryComponent> &m_MachineInventories;
     ComponentStorage<CraftingMachineComponent> &m_CraftingMachines;

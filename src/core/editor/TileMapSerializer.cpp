@@ -99,11 +99,12 @@ bool TileMapSerializer::save(const World& world, const std::string &filePath) {
     }
 
     file << "MACHINES " << machines.size() << "\n";
-    for (const auto& [machineUniqueName, tileX, tileY] : machines) {
+    for (const auto& [machineUniqueName, tileX, tileY, direction] : machines) {
         file << "MACHINE "
              << machineUniqueName << " "
              << tileX << " "
-             << tileY << "\n";
+             << tileY << " "
+             << directionToInt(direction) << "\n";
     }
 
     return true;
@@ -251,9 +252,13 @@ bool TileMapSerializer::load(World& world, const std::string &filePath) {
             std::string machineUniqueName;
             int tileX;
             int tileY;
+            int directionValue = directionToInt(Direction::RIGHT);
 
             ss >> machineUniqueName >> tileX >> tileY;
-            world.placeMachine(machineUniqueName, tileX, tileY);
+            if (!(ss >> directionValue)) {
+                directionValue = directionToInt(Direction::RIGHT);
+            }
+            world.placeMachine(machineUniqueName, tileX, tileY, intToDirection(directionValue));
         }
     }
 

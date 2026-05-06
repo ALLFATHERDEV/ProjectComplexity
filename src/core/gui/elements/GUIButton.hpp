@@ -19,6 +19,10 @@ public:
     }
 
     void handleEvent(const SDL_Event &event) override {
+        if (!isVisible()) {
+            return;
+        }
+
         if (event.type != SDL_EVENT_MOUSE_BUTTON_DOWN)
             return;
 
@@ -34,6 +38,10 @@ public:
     }
 
     void render(Renderer *renderer) override {
+        if (!isVisible()) {
+            return;
+        }
+
         float mouseX;
         float mouseY;
         SDL_GetMouseState(&mouseX, &mouseY);

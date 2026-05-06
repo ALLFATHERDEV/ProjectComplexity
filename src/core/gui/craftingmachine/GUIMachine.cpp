@@ -1,6 +1,8 @@
 #include "GUIMachine.hpp"
 #include <algorithm>
 
+#include "../../Logger.hpp"
+
 void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_GUISystem = &guiSystem;
 
@@ -64,6 +66,24 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_MinerInfoText->setPosition(410.0f, 200.0f);
     m_MinerInfoText->setVisible(false);
 
+    for (int i = 0; i < 4; i++) {
+        auto* inputSlot = guiSystem.addElement<GUIFluidSlot>();
+        inputSlot->setPosition(410.0f + i * 58.0f, 270.0f);
+        inputSlot->setSize(52.0f, 52.0f);
+        inputSlot->setLabel("In " + std::to_string(i + 1));
+        inputSlot->setFillColor({70, 150, 220, 255});
+        inputSlot->setVisible(false);
+        m_InputFluidSlots[i] = inputSlot;
+
+        auto* outputSlot = guiSystem.addElement<GUIFluidSlot>();
+        outputSlot->setPosition(760.0f + i * 58.0f, 270.0f);
+        outputSlot->setSize(52.0f, 52.0f);
+        outputSlot->setLabel("Out " + std::to_string(i + 1));
+        outputSlot->setFillColor({140, 220, 110, 255});
+        outputSlot->setVisible(false);
+        m_OutputFluidSlots[i] = outputSlot;
+    }
+
     m_PlayerInventoryPanel = guiSystem.addElement<GUIPanel>();
     m_PlayerInventoryPanel->setPosition(960.0f, 120.0f);
     m_PlayerInventoryPanel->setSize(600.0f, 360.0f);
@@ -82,6 +102,8 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
 void GUIMachine::open(Entity machine) {
     m_SelectedMachine = machine;
     m_Open = true;
+
+    LOG_INFO("GUIMachine: open machine entity={}", machine);
 
     if (m_Panel)
         m_Panel->setVisible(true);
@@ -128,15 +150,18 @@ void GUIMachine::open(Entity machine) {
 
     showPlayerInventory();
 
-    if (m_GUISystem)
+    if (m_GUISystem && m_RecipeButtons.empty())
         rebuildRecipeButtons(*m_GUISystem);
 
     updateRecipeButtons();
+    updateFluidWidgets();
 }
 
 void GUIMachine::openStorage(Entity storage) {
     m_SelectedMachine = storage;
     m_Open = true;
+
+    LOG_INFO("GUIMachine: open storage entity={}", storage);
 
     if (m_Panel) {
         m_Panel->setVisible(true);
@@ -165,6 +190,8 @@ void GUIMachine::openStorage(Entity storage) {
     if (m_MinerInfoText) {
         m_MinerInfoText->setVisible(false);
     }
+
+    setFluidWidgetsVisible(false);
 
     if (m_StorageGrid) {
         auto* inventory = m_Inventories ? m_Inventories->get(storage) : nullptr;
@@ -203,6 +230,10 @@ void GUIMachine::togglePlayerInventory() {
 }
 
 void GUIMachine::close() {
+    if (m_Open || m_PlayerInventoryOpen) {
+        LOG_INFO("GUIMachine: close selectedEntity={}", m_SelectedMachine);
+    }
+
     m_Open = false;
     m_PlayerInventoryOpen = false;
     m_SelectedMachine = 0;
@@ -231,6 +262,8 @@ void GUIMachine::close() {
     if (m_MinerInfoText)
         m_MinerInfoText->setVisible(false);
 
+    setFluidWidgetsVisible(false);
+
     hidePlayerInventory();
 
     for (auto* button : m_RecipeButtons) {
@@ -247,6 +280,7 @@ bool GUIMachine::isPlayerInventoryOpen() const {
 }
 
 void GUIMachine::bind(ComponentStorage<MachineInventoryComponent>* machineInventories,
+                      ComponentStorage<MachineFluidComponent>* machineFluids,
                       ComponentStorage<CraftingMachineComponent>* craftingMachines,
                       ComponentStorage<MinerComponent>* miners,
                       const RecipeDatabase* recipeDatabase,
@@ -256,6 +290,7 @@ void GUIMachine::bind(ComponentStorage<MachineInventoryComponent>* machineInvent
     m_CraftingMachines = craftingMachines;
     m_Miners = miners;
     m_MachineInventories = machineInventories;
+    m_MachineFluids = machineFluids;
     m_RecipeDatabase = recipeDatabase;
     m_ItemDatabase = itemDatabase;
     m_Inventories = inventories;
@@ -372,6 +407,7 @@ void GUIMachine::update() {
     }
 
     updateRecipeButtons();
+    updateFluidWidgets();
 }
 
 void GUIMachine::updateRecipeButtons() {
@@ -417,15 +453,20 @@ void GUIMachine::updateRecipeButtons() {
 
             if (selectedMachine->currentRecipeName != recipeName) {
                 if (!tryApplyRecipeLayout(*nextRecipe)) {
+                    LOG_WARN("GUIMachine: failed to apply recipe layout machine={} recipe={}",
+                             m_SelectedMachine,
+                             recipeName);
                     return;
                 }
 
+                LOG_INFO("GUIMachine: machine {} recipe change {} -> {}",
+                         m_SelectedMachine,
+                         selectedMachine->currentRecipeName,
+                         recipeName);
                 selectedMachine->currentRecipeName = recipeName;
                 selectedMachine->progress = 0.0f;
                 selectedMachine->isCrafting = false;
             }
-
-            updateRecipeButtons();
         });
     }
 }
@@ -503,8 +544,8 @@ bool GUIMachine::transferSlotToReservedRecipeInputs(InventorySlot& sourceSlot, I
     }
 
     int moved = 0;
-    for (size_t i = 0; i < recipe->inputs.size() && sourceSlot.stack.amount > 0; i++) {
-        const auto& ingredient = recipe->inputs[i];
+    for (size_t i = 0; i < recipe->itemInputs.size() && sourceSlot.stack.amount > 0; i++) {
+        const auto& ingredient = recipe->itemInputs[i];
         if (ingredient.itemName != sourceSlot.stack.item->uniqueName) {
             continue;
         }
@@ -631,7 +672,7 @@ bool GUIMachine::canAcceptInputStack(const ItemStack& stack) const {
         return false;
     }
 
-    for (const auto& ingredient : recipe->inputs) {
+    for (const auto& ingredient : recipe->itemInputs) {
         if (ingredient.itemName == stack.item->uniqueName) {
             return true;
         }
@@ -650,11 +691,11 @@ bool GUIMachine::canAcceptInputStackAtSlot(int slotX, int slotY, const ItemStack
         return false;
     }
 
-    if (slotX >= static_cast<int>(recipe->inputs.size())) {
+    if (slotX >= static_cast<int>(recipe->itemInputs.size())) {
         return false;
     }
 
-    return recipe->inputs[slotX].itemName == stack.item->uniqueName;
+    return recipe->itemInputs[slotX].itemName == stack.item->uniqueName;
 }
 
 const RecipeDefinition* GUIMachine::getSelectedRecipe() const {
@@ -680,11 +721,11 @@ const ItemDefinition* GUIMachine::getInputSlotBackgroundItem(int slotX, int slot
         return nullptr;
     }
 
-    if (slotX >= static_cast<int>(recipe->inputs.size())) {
+    if (slotX >= static_cast<int>(recipe->itemInputs.size())) {
         return nullptr;
     }
 
-    return m_ItemDatabase->getItem(recipe->inputs[slotX].itemName);
+    return m_ItemDatabase->getItem(recipe->itemInputs[slotX].itemName);
 }
 
 bool GUIMachine::tryApplyRecipeLayout(const RecipeDefinition& recipe) const {
@@ -697,8 +738,8 @@ bool GUIMachine::tryApplyRecipeLayout(const RecipeDefinition& recipe) const {
         return false;
     }
 
-    const int inputSlots = std::max(1, static_cast<int>(recipe.inputs.size()));
-    const int outputSlots = static_cast<int>(recipe.outputs.size());
+    const int inputSlots = std::max(1, static_cast<int>(recipe.itemInputs.size()));
+    const int outputSlots = static_cast<int>(recipe.itemOutputs.size());
 
     if (!inventory->inputInventory.resizePreserve(inputSlots, 1)) {
         return false;
@@ -718,9 +759,9 @@ const ItemDefinition * GUIMachine::getOutputSlotBackgroundItem(int slotX, int sl
     const RecipeDefinition* recipe = getSelectedRecipe();
     if (!recipe) return nullptr;
 
-    if (slotX >= static_cast<int>(recipe->outputs.size())) return nullptr;
+    if (slotX >= static_cast<int>(recipe->itemOutputs.size())) return nullptr;
 
-    return m_ItemDatabase->getItem(recipe->outputs[slotX].itemName);
+    return m_ItemDatabase->getItem(recipe->itemOutputs[slotX].itemName);
 }
 
 bool GUIMachine::canAcceptOutputStack(const ItemStack &stack) const {
@@ -732,7 +773,7 @@ bool GUIMachine::canAcceptOutputStack(const ItemStack &stack) const {
     const RecipeDefinition* recipe = m_RecipeDatabase->getRecipe(machine->currentRecipeName);
     if (!recipe) return false;
 
-    for (const auto& ingredient : recipe->outputs) {
+    for (const auto& ingredient : recipe->itemOutputs) {
         if (ingredient.itemName == stack.item->uniqueName)
             return true;
     }
@@ -746,7 +787,70 @@ bool GUIMachine::canAcceptOutputStackAtSlot(int slotX, int slotY, const ItemStac
     const RecipeDefinition* recipe = getSelectedRecipe();
     if (!recipe) return false;
 
-    if (slotX >= static_cast<int>(recipe->outputs.size())) return false;
+    if (slotX >= static_cast<int>(recipe->itemOutputs.size())) return false;
 
-    return recipe->outputs[slotX].itemName == stack.item->uniqueName;
+    return recipe->itemOutputs[slotX].itemName == stack.item->uniqueName;
+}
+
+void GUIMachine::updateFluidWidgets() {
+    setFluidWidgetsVisible(false);
+
+    if (!m_Open || !m_MachineFluids || !m_CraftingMachines || !m_RecipeDatabase) {
+        return;
+    }
+
+    const RecipeDefinition* recipe = getSelectedRecipe();
+    if (!recipe) {
+        return;
+    }
+
+    const bool hasFluidInputs = !recipe->fluidInputs.empty();
+    const bool hasFluidOutputs = !recipe->fluidOutputs.empty();
+    if (!hasFluidInputs && !hasFluidOutputs) {
+        return;
+    }
+
+    MachineFluidComponent* machineFluid = m_MachineFluids->get(m_SelectedMachine);
+    if (!machineFluid) {
+        return;
+    }
+
+    for (size_t i = 0; hasFluidInputs && i < machineFluid->inputs.size() && i < m_InputFluidSlots.size(); i++) {
+        if (!m_InputFluidSlots[i]) {
+            continue;
+        }
+
+        MachineFluidSlot& slot = machineFluid->inputs[i];
+        m_InputFluidSlots[i]->setSlot(&slot);
+        m_InputFluidSlots[i]->setLabel(slot.name.empty() ? ("In " + std::to_string(i + 1)) : slot.name);
+        m_InputFluidSlots[i]->setVisible(true);
+    }
+
+    for (size_t i = 0; hasFluidOutputs && i < machineFluid->outputs.size() && i < m_OutputFluidSlots.size(); i++) {
+        if (!m_OutputFluidSlots[i]) {
+            continue;
+        }
+
+        MachineFluidSlot& slot = machineFluid->outputs[i];
+        m_OutputFluidSlots[i]->setSlot(&slot);
+        m_OutputFluidSlots[i]->setLabel(slot.name.empty() ? ("Out " + std::to_string(i + 1)) : slot.name);
+        m_OutputFluidSlots[i]->setVisible(true);
+    }
+}
+
+void GUIMachine::setFluidWidgetsVisible(bool visible) {
+    for (size_t i = 0; i < m_InputFluidSlots.size(); i++) {
+        if (m_InputFluidSlots[i]) {
+            m_InputFluidSlots[i]->setVisible(visible);
+            if (!visible) {
+                m_InputFluidSlots[i]->setSlot(nullptr);
+            }
+        }
+        if (m_OutputFluidSlots[i]) {
+            m_OutputFluidSlots[i]->setVisible(visible);
+            if (!visible) {
+                m_OutputFluidSlots[i]->setSlot(nullptr);
+            }
+        }
+    }
 }

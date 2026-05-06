@@ -1,0 +1,13 @@
+{
+  "uniqueName": "fluid_tank",
+  "displayName": "Fluid Tank",
+  "type": "fluid_tank",
+  "spritePaletteName": "Fluid",
+  "spriteAtlasX": 1,
+  "spriteAtlasY": 2,
+  "widthTiles": 1,
+  "heightTiles": 1,
+  "requiresFuel": false,
+  "capacity": 1000.0,
+  "allowedPlacementTags": []
+}

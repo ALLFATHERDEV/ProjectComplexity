@@ -1,0 +1,31 @@
+{
+  "craftTime": 5.0,
+  "displayName": "Test Fluid Recipe",
+  "itemInputs": [
+    {
+      "amount": 1,
+      "itemName": "iron_ingot"
+    }
+  ],
+  "fluidInputs": [
+    {
+      "amount": 30.0,
+      "fluidName": "water",
+      "slotName": "water_in"
+    }
+  ],
+  "itemOutputs": [
+    {
+      "amount": 1,
+      "itemName": "copper_ingot"
+    }
+  ],
+  "fluidOutputs": [
+    {
+      "amount": 10.0,
+      "fluidName": "acid",
+      "slotName": "acid_out"
+    }
+  ],
+  "uniqueName": "test_fluid_recipe"
+}

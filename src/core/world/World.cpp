@@ -3,7 +3,6 @@
 #include <algorithm>
 
 #include "EntityFactory.hpp"
-#include "TileMapGenerator.hpp"
 #include "../Game.hpp"
 #include "../Logger.hpp"
 #include "../editor/TileMapSerializer.hpp"
@@ -41,6 +40,8 @@ World::World()
                         m_FluidTanks,
                         m_FluidPumps,
                         m_FluidPorts,
+                        m_MachineFluids,
+                        m_MachineFluidPortLinks,
                         m_MachineEntities,
                         m_MachineInventories,
                         m_CraftingMachines,
@@ -61,6 +62,8 @@ World::World()
                      m_Collisions,
                      m_ConveyorBelts,
                      m_Inventories,
+                     m_MachineFluids,
+                     m_MachineFluidPortLinks,
                      m_MachineEntities,
                      m_MachineInventories,
                      m_CraftingMachines,
@@ -71,24 +74,22 @@ World::World()
 
 }
 
-World::~World() {
-}
+World::~World() = default;
 
 void World::update(float deltaTime) {
     m_MovementInputSystem.update(m_Inputs, m_Velocities);
     m_CollisionSystem.update(deltaTime, m_Positions, m_Velocities, m_Collisions, m_TileMap);
 
-    m_CharacterStateSystem.update(m_CharacterStates, m_Velocities);
-    m_AnimationStateSystem.update(m_CharacterStates, m_ConveyorBelts, m_AnimationControllers);
-    m_AnimationSystem.update(deltaTime, m_AnimationControllers);
-    // m_MovementSystem.update(deltaTime, m_Positions, m_Velocities);
-    m_CraftingSystem.update(deltaTime, m_CraftingMachines, m_MachineInventories, m_RecipeDatabase, m_ItemDatabase);
+    CharacterStateSystem::update(m_CharacterStates, m_Velocities);
+    AnimationStateSystem::update(m_CharacterStates, m_ConveyorBelts, m_AnimationControllers);
+    AnimationSystem::update(deltaTime, m_AnimationControllers);
     m_FluidSystem.update(deltaTime, m_Positions, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts);
+    m_MachineFluidIOSystem.update(deltaTime, m_MachineFluidPortLinks, m_FluidPorts, m_CraftingMachines, m_MachineFluids, m_FluidPipes, m_FluidTanks, m_RecipeDatabase, m_FluidDatabase, m_FluidSystem);
+    m_CraftingSystem.update(deltaTime, m_CraftingMachines, m_MachineInventories, m_MachineFluids, m_RecipeDatabase, m_ItemDatabase, m_FluidDatabase);
     m_MiningSystem.update(deltaTime, m_Miners, m_Positions, m_MachineInventories, m_TileMap, m_TileMetadataDatabase, m_ItemDatabase);
     m_ConveyorSystem.update(deltaTime, m_EntityManager, m_Player, m_Positions, m_Sprites, m_ConveyorBelts, m_ConveyorItems, m_Inventories, m_MachineInventories);
 
-    auto* playerPos = m_Positions.get(m_Player);
-    if (playerPos) {
+    if (const auto* playerPos = m_Positions.get(m_Player)) {
         m_ChunkManager.update(playerPos->position, 32);
         const float halfWidth = static_cast<float>(Game::WINDOW_WIDTH) / (2.0f * m_Camera.getZoom());
         const float halfHeight = static_cast<float>(Game::WINDOW_HEIGHT) / (2.0f * m_Camera.getZoom());
@@ -169,7 +170,15 @@ Vec2f World::getPlayerPosition() const {
 }
 
 Sprite World::getMachineSprite(const MachineDefinition& machineDefinition) const {
-    return m_TileMapAtlas.getSprite(machineDefinition.spriteAtlasX, machineDefinition.spriteAtlasY);
+    SpriteAtlas* atlas = getTilePalette(machineDefinition.spritePaletteName);
+    if (!atlas) {
+        atlas = getTilePalette("Overworld");
+    }
+    if (!atlas) {
+        return {};
+    }
+
+    return atlas->getSprite(machineDefinition.spriteAtlasX, machineDefinition.spriteAtlasY);
 }
 
 bool World::isAreaBlockedByEntity(const SDL_FRect& rect) const {
@@ -304,7 +313,7 @@ bool World::placeItem(const ItemDefinition& item, int tileX, int tileY, Directio
     }
 
     if (!item.placedMachineUniqueName.empty()) {
-        return placeMachine(item.placedMachineUniqueName, tileX, tileY);
+        return placeMachine(item.placedMachineUniqueName, tileX, tileY, direction);
     }
 
     if (item.placesStorageContainer) {
@@ -323,6 +332,8 @@ bool World::placeItem(const ItemDefinition& item, int tileX, int tileY, Directio
             m_FluidTanks,
             m_FluidPumps,
             m_FluidPorts,
+            m_MachineFluids,
+            m_MachineFluidPortLinks,
             m_MachineEntities,
             m_MachineInventories,
             m_CraftingMachines,
@@ -343,13 +354,15 @@ bool World::placeItem(const ItemDefinition& item, int tileX, int tileY, Directio
     return m_TileMap.setTileObject(tileX, tileY, item.placeableSprite, item.placeableLayer, item.placeableWidthTiles, item.placeableHeightTiles, item.placeableBlocking, item.uniqueName);
 }
 
-bool World::placeMachine(const std::string& machineUniqueName, int tileX, int tileY) {
+bool World::placeMachine(const std::string& machineUniqueName, int tileX, int tileY, Direction direction) {
     const MachineDefinition* machineDefinition = m_MachineDatabase.getMachine(machineUniqueName);
     if (!machineDefinition) {
+        LOG_WARN("World: rejected machine placement {} at ({}, {}): machine definition missing", machineUniqueName, tileX, tileY);
         return false;
     }
 
     if (!satisfiesMachinePlacementCondition(*machineDefinition, tileX, tileY)) {
+        LOG_WARN("World: rejected machine placement {} at ({}, {}): placement tags not satisfied", machineUniqueName, tileX, tileY);
         return false;
     }
 
@@ -361,8 +374,11 @@ bool World::placeMachine(const std::string& machineUniqueName, int tileX, int ti
     };
 
     if (m_TileMap.isRectColliding(worldRect) || isAreaBlockedByEntity(worldRect)) {
+        LOG_WARN("World: rejected machine placement {} at ({}, {}): blocked or colliding", machineUniqueName, tileX, tileY);
         return false;
     }
+
+    LOG_INFO("World: placing machine {} at ({}, {}) direction={}", machineUniqueName, tileX, tileY, static_cast<int>(direction));
 
     EntityFactory factory(
         m_EntityManager,
@@ -379,6 +395,8 @@ bool World::placeMachine(const std::string& machineUniqueName, int tileX, int ti
         m_FluidTanks,
         m_FluidPumps,
         m_FluidPorts,
+        m_MachineFluids,
+        m_MachineFluidPortLinks,
         m_MachineEntities,
         m_MachineInventories,
         m_CraftingMachines,
@@ -391,8 +409,16 @@ bool World::placeMachine(const std::string& machineUniqueName, int tileX, int ti
     const Sprite machineSprite = getMachineSprite(*machineDefinition);
 
     switch (machineDefinition->type) {
-        case MachineType::Crafting:
-            return factory.createCraftingMachine(worldPosition, machineSprite, *machineDefinition) != -1;
+        case MachineType::Crafting: {
+            const Entity entity = factory.createCraftingMachine(worldPosition, machineSprite, *machineDefinition);
+            if (!machineDefinition->fluidPorts.empty()) {
+                m_FluidSystem.markNetworksDirty();
+            }
+            if (entity != -1) {
+                LOG_INFO("World: placed crafting machine {} entity={}", machineUniqueName, entity);
+            }
+            return entity != -1;
+        }
 
         case MachineType::Miner: {
             const MinerMachineDefinition* minerDefinition =
@@ -402,7 +428,45 @@ bool World::placeMachine(const std::string& machineUniqueName, int tileX, int ti
                 return false;
             }
 
-            return factory.createMiner(worldPosition, machineSprite, *minerDefinition) != -1;
+            const Entity entity = factory.createMiner(worldPosition, machineSprite, *minerDefinition);
+            if (entity != -1) {
+                LOG_INFO("World: placed miner {} entity={}", machineUniqueName, entity);
+            }
+            return entity != -1;
+        }
+
+        case MachineType::FluidTank: {
+            const FluidTankMachineDefinition* tankDefinition =
+                m_MachineDatabase.getMachineAs<FluidTankMachineDefinition>(machineUniqueName);
+            if (!tankDefinition) {
+                LOG_WARN("Machine {} is marked as fluid tank, but could not be cast to FluidTankMachineDefinition", machineUniqueName);
+                return false;
+            }
+
+            const Entity entity = factory.createFluidTankMachine(worldPosition, machineSprite, *tankDefinition);
+            m_FluidManager.registerFluidTankEntity(tileX, tileY, entity);
+            m_FluidSystem.markNetworksDirty();
+            if (entity != -1) {
+                LOG_INFO("World: placed fluid tank {} entity={}", machineUniqueName, entity);
+            }
+            return entity != -1;
+        }
+
+        case MachineType::FluidPump: {
+            const FluidPumpMachineDefinition* pumpDefinition =
+                m_MachineDatabase.getMachineAs<FluidPumpMachineDefinition>(machineUniqueName);
+            if (!pumpDefinition) {
+                LOG_WARN("Machine {} is marked as fluid pump, but could not be cast to FluidPumpMachineDefinition", machineUniqueName);
+                return false;
+            }
+
+            const Entity entity = factory.createFluidPumpMachine(worldPosition, machineSprite, *pumpDefinition, direction, m_FluidManager.getDebugFluidDefinition());
+            m_FluidManager.registerFluidPumpEntity(tileX, tileY, entity);
+            m_FluidSystem.markNetworksDirty();
+            if (entity != -1) {
+                LOG_INFO("World: placed fluid pump {} entity={} direction={}", machineUniqueName, entity, static_cast<int>(direction));
+            }
+            return entity != -1;
         }
 
         default:
@@ -413,20 +477,62 @@ bool World::placeMachine(const std::string& machineUniqueName, int tileX, int ti
 
 void World::clearMachines() {
     std::vector<Entity> machineEntities = m_MachineEntities.getEntities();
+    bool removedFluidMachine = false;
     for (Entity entity : machineEntities) {
+        const PositionComponent* position = m_Positions.get(entity);
+        const int tileX = position ? static_cast<int>(position->position.x) / 32 : 0;
+        const int tileY = position ? static_cast<int>(position->position.y) / 32 : 0;
+
+        if (m_FluidTanks.get(entity)) {
+            m_FluidManager.unregisterFluidTankEntity(tileX, tileY);
+            m_FluidTanks.remove(entity);
+            removedFluidMachine = true;
+        }
+
+        if (m_FluidPumps.get(entity)) {
+            m_FluidManager.unregisterFluidPumpEntity(tileX, tileY);
+            m_FluidPumps.remove(entity);
+            m_FluidPorts.remove(entity);
+            removedFluidMachine = true;
+        }
+
+        if (m_MachineFluids.get(entity)) {
+            removedFluidMachine = true;
+        }
+
+        std::vector<Entity> machinePortEntities;
+        const auto& portLinks = m_MachineFluidPortLinks.getRaw();
+        const auto& portLinkEntities = m_MachineFluidPortLinks.getEntities();
+        for (size_t i = 0; i < portLinks.size(); i++) {
+            if (portLinks[i].machineEntity == entity) {
+                machinePortEntities.push_back(portLinkEntities[i]);
+            }
+        }
+
+        for (Entity portEntity : machinePortEntities) {
+            m_Positions.remove(portEntity);
+            m_FluidPorts.remove(portEntity);
+            m_MachineFluidPortLinks.remove(portEntity);
+        }
+
         m_Positions.remove(entity);
         m_Sprites.remove(entity);
         m_Collisions.remove(entity);
+        m_MachineFluids.remove(entity);
         m_MachineInventories.remove(entity);
         m_CraftingMachines.remove(entity);
         m_Miners.remove(entity);
         m_Interactions.remove(entity);
         m_MachineEntities.remove(entity);
     }
+
+    if (removedFluidMachine) {
+        m_FluidSystem.markNetworksDirty();
+    }
 }
 
-std::vector<std::tuple<std::string, int, int>> World::getMachinePlacementData() const {
-    std::vector<std::tuple<std::string, int, int>> machines;
+std::vector<std::tuple<std::string, int, int, Direction>> World::getMachinePlacementData() const {
+    std::vector<std::tuple<std::string, int, int, Direction>> machines;
     const auto& machineComponents = m_MachineEntities.getRaw();
     const auto& entities = m_MachineEntities.getEntities();
 
@@ -438,7 +544,23 @@ std::vector<std::tuple<std::string, int, int>> World::getMachinePlacementData() 
 
         const int tileX = static_cast<int>(position->position.x) / 32;
         const int tileY = static_cast<int>(position->position.y) / 32;
-        machines.emplace_back(machineComponents[i].machineUniqueName, tileX, tileY);
+        Direction direction = Direction::RIGHT;
+        if (const FluidPortComponent* directPort = m_FluidPorts.get(entities[i])) {
+            direction = directPort->side;
+        }
+        const auto& portLinks = m_MachineFluidPortLinks.getRaw();
+        const auto& portLinkEntities = m_MachineFluidPortLinks.getEntities();
+        for (size_t portIndex = 0; portIndex < portLinks.size(); portIndex++) {
+            if (portLinks[portIndex].machineEntity != entities[i]) {
+                continue;
+            }
+
+            if (const FluidPortComponent* port = m_FluidPorts.get(portLinkEntities[portIndex])) {
+                direction = port->side;
+                break;
+            }
+        }
+        machines.emplace_back(machineComponents[i].machineUniqueName, tileX, tileY, direction);
     }
 
     return machines;
@@ -505,7 +627,7 @@ void World::removeFluidPipe(int tileX, int tileY) {
 }
 
 void World::placeFluidTank(int tileX, int tileY) {
-    m_FluidManager.placeFluidTank(tileX, tileY);
+    placeMachine("fluid_tank", tileX, tileY);
 }
 
 void World::removeFluidTank(int tileX, int tileY) {
@@ -513,7 +635,7 @@ void World::removeFluidTank(int tileX, int tileY) {
 }
 
 void World::placeFluidPump(int tileX, int tileY, Direction direction) {
-    m_FluidManager.placeFluidPump(tileX, tileY, direction);
+    placeMachine("fluid_pump", tileX, tileY, direction);
 }
 
 void World::removeFluidPump(int tileX, int tileY) {
@@ -573,6 +695,14 @@ void World::initializeWorld() {
     m_ItemAtlas.createAtlas(m_Renderer, 32, 32, "assets/tilesets/items_sheet.png");
     m_ItemDatabase.loadItemsFromFolder("assets/items", m_ItemAtlas, *m_Renderer);
 
+    LOG_INFO("Loading fluids...");
+    m_FluidDatabase.loadFluidsFromFolder("assets/fluids");
+    const FluidDefinition* defaultFluid = m_FluidDatabase.getFluid("water");
+    m_FluidManager.setDefaultFluidDefinition(defaultFluid);
+    if (!defaultFluid) {
+        LOG_WARN("World: default fluid 'water' not found in FluidDatabase, using local fallback");
+    }
+
     LOG_INFO("Loading recipes...");
     m_RecipeDatabase.loadRecipesFromFolder("assets/recipes");
 
@@ -583,7 +713,7 @@ void World::initializeWorld() {
     m_TileMetadataDatabase.loadFromFolder("assets/tilesets");
 
     LOG_INFO("Creating entities...");
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts, m_MachineEntities, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts, m_MachineFluids, m_MachineFluidPortLinks, m_MachineEntities, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
 
     m_Player = factory.createPlayer({ 30.0f * 32.0f, 14.0f * 32.0f });
     m_ChunkManager.update({100.0f, 100.0f}, 32);
@@ -616,6 +746,7 @@ void World::initializeWorld() {
     m_TileMapAtlas.createAtlas(m_Renderer, 32, 32, "assets/tilesets/Map_tiles.png");
     m_TilePalettes.clear();
     registerTilePalette("Overworld", &m_TileMapAtlas);
+    registerTilePalette("Fluid", &m_FluidAtlas);
     registerTilePalette("Ore Veins", &m_OreVeinsAtlas);
     TileMapSerializer::load(*this, "maps/test.map");
     // TileMapGenerator::Config mapGeneratorConfig;

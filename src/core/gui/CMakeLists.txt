@@ -3,6 +3,7 @@ target_sources(ProjectComplexity PRIVATE
         GUISystem.hpp
         elements/GUIPanel.hpp
         elements/GUIInventoryGrid.hpp
+        elements/GUIFluidSlot.hpp
         craftingmachine/GUIMachine.cpp
         craftingmachine/GUIMachine.hpp
         elements/GUIProgressBar.hpp

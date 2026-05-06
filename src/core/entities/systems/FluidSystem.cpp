@@ -6,12 +6,14 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "../../Logger.hpp"
+
 void FluidSystem::update(float deltaTime,
-                         ComponentStorage<PositionComponent>& positions,
-                         ComponentStorage<FluidPipeComponent>& pipes,
-                         ComponentStorage<FluidTankComponent>& tanks,
-                         ComponentStorage<FluidPumpComponent>& pumps,
-                         ComponentStorage<FluidPortComponent>& ports) {
+                         ComponentStorage<PositionComponent> &positions,
+                         ComponentStorage<FluidPipeComponent> &pipes,
+                         ComponentStorage<FluidTankComponent> &tanks,
+                         ComponentStorage<FluidPumpComponent> &pumps,
+                         ComponentStorage<FluidPortComponent> &ports) {
     if (m_NetworksDirty) {
         rebuildNetworks(positions, pipes, tanks, ports);
     }
@@ -29,21 +31,21 @@ void FluidSystem::markNetworksDirty() {
     m_NetworksDirty = true;
 }
 
-void FluidSystem::rebuildNetworks(ComponentStorage<PositionComponent>& positions,
-                                  ComponentStorage<FluidPipeComponent>& pipes,
-                                  ComponentStorage<FluidTankComponent>& tanks,
-                                  ComponentStorage<FluidPortComponent>& ports) {
+void FluidSystem::rebuildNetworks(ComponentStorage<PositionComponent> &positions,
+                                  ComponentStorage<FluidPipeComponent> &pipes,
+                                  ComponentStorage<FluidTankComponent> &tanks,
+                                  ComponentStorage<FluidPortComponent> &ports) {
     m_Networks.clear();
     m_EntityToNetworkId.clear();
     m_NextNetworkId = 1;
 
     std::unordered_map<long long, Entity> pipeEntitiesByTile;
     std::unordered_map<long long, Entity> tankEntitiesByTile;
-    std::unordered_map<long long, Entity> portEntitiesByTile;
+    std::unordered_map<long long, std::vector<Entity>> portEntitiesByTile;
 
-    const std::vector<Entity>& pipeEntities = pipes.getEntities();
-    for (Entity entity : pipeEntities) {
-        const PositionComponent* position = positions.get(entity);
+    const std::vector<Entity> &pipeEntities = pipes.getEntities();
+    for (Entity entity: pipeEntities) {
+        const PositionComponent *position = positions.get(entity);
         if (!position) {
             continue;
         }
@@ -53,9 +55,9 @@ void FluidSystem::rebuildNetworks(ComponentStorage<PositionComponent>& positions
         pipeEntitiesByTile[makeTileKey(tileX, tileY)] = entity;
     }
 
-    const std::vector<Entity>& tankEntities = tanks.getEntities();
-    for (Entity entity : tankEntities) {
-        const PositionComponent* position = positions.get(entity);
+    const std::vector<Entity> &tankEntities = tanks.getEntities();
+    for (Entity entity: tankEntities) {
+        const PositionComponent *position = positions.get(entity);
         if (!position) {
             continue;
         }
@@ -65,20 +67,20 @@ void FluidSystem::rebuildNetworks(ComponentStorage<PositionComponent>& positions
         tankEntitiesByTile[makeTileKey(tileX, tileY)] = entity;
     }
 
-    const std::vector<Entity>& portEntities = ports.getEntities();
-    for (Entity entity : portEntities) {
-        const PositionComponent* position = positions.get(entity);
+    const std::vector<Entity> &portEntities = ports.getEntities();
+    for (Entity entity: portEntities) {
+        const PositionComponent *position = positions.get(entity);
         if (!position) {
             continue;
         }
 
         const int tileX = worldToTile(position->position.x);
         const int tileY = worldToTile(position->position.y);
-        portEntitiesByTile[makeTileKey(tileX, tileY)] = entity;
+        portEntitiesByTile[makeTileKey(tileX, tileY)].push_back(entity);
     }
 
     std::unordered_set<Entity> visitedPipes;
-    for (Entity startPipe : pipeEntities) {
+    for (Entity startPipe: pipeEntities) {
         if (visitedPipes.contains(startPipe)) {
             continue;
         }
@@ -99,8 +101,8 @@ void FluidSystem::rebuildNetworks(ComponentStorage<PositionComponent>& positions
             network.pipes.push_back(currentPipe);
             m_EntityToNetworkId[currentPipe] = network.id;
 
-            const PositionComponent* pipePosition = positions.get(currentPipe);
-            const FluidPipeComponent* pipeComponent = pipes.get(currentPipe);
+            const PositionComponent *pipePosition = positions.get(currentPipe);
+            const FluidPipeComponent *pipeComponent = pipes.get(currentPipe);
             if (!pipePosition || !pipeComponent) {
                 continue;
             }
@@ -108,14 +110,14 @@ void FluidSystem::rebuildNetworks(ComponentStorage<PositionComponent>& positions
             const int tileX = worldToTile(pipePosition->position.x);
             const int tileY = worldToTile(pipePosition->position.y);
 
-            const std::pair<Direction, std::pair<int, int>> neighbors[] = {
+            const std::pair<Direction, std::pair<int, int> > neighbors[] = {
                 {Direction::UP, {tileX, tileY - 1}},
                 {Direction::DOWN, {tileX, tileY + 1}},
                 {Direction::LEFT, {tileX - 1, tileY}},
                 {Direction::RIGHT, {tileX + 1, tileY}}
             };
 
-            for (const auto& neighbor : neighbors) {
+            for (const auto &neighbor: neighbors) {
                 const Direction direction = neighbor.first;
                 const int neighborTileX = neighbor.second.first;
                 const int neighborTileY = neighbor.second.second;
@@ -124,7 +126,7 @@ void FluidSystem::rebuildNetworks(ComponentStorage<PositionComponent>& positions
                 auto pipeIt = pipeEntitiesByTile.find(neighborKey);
                 if (pipeIt != pipeEntitiesByTile.end()) {
                     const Entity neighborPipe = pipeIt->second;
-                    const FluidPipeComponent* neighborPipeComponent = pipes.get(neighborPipe);
+                    const FluidPipeComponent *neighborPipeComponent = pipes.get(neighborPipe);
                     if (neighborPipeComponent &&
                         arePipeNeighborsConnected(*pipeComponent, *neighborPipeComponent, direction) &&
                         !visitedPipes.contains(neighborPipe)) {
@@ -145,33 +147,41 @@ void FluidSystem::rebuildNetworks(ComponentStorage<PositionComponent>& positions
 
                 auto portIt = portEntitiesByTile.find(neighborKey);
                 if (portIt != portEntitiesByTile.end() && pipeHasConnection(*pipeComponent, direction)) {
-                    const Entity portEntity = portIt->second;
-                    const FluidPortComponent* portComponent = ports.get(portEntity);
-                    if (!portComponent) {
-                        continue;
-                    }
+                    for (const Entity portEntity : portIt->second) {
+                        const FluidPortComponent *portComponent = ports.get(portEntity);
+                        if (!portComponent) {
+                            continue;
+                        }
 
-                    if (portComponent->side != getOppositeDirection(direction)) {
-                        continue;
-                    }
+                        if (portComponent->side != getOppositeDirection(direction)) {
+                            continue;
+                        }
 
-                    if (!networkPorts.contains(portEntity)) {
-                        networkPorts.insert(portEntity);
-                        network.ports.push_back(portEntity);
-                        m_EntityToNetworkId[portEntity] = network.id;
+                        if (!networkPorts.contains(portEntity)) {
+                            networkPorts.insert(portEntity);
+                            network.ports.push_back(portEntity);
+                            m_EntityToNetworkId[portEntity] = network.id;
+                        }
                     }
                 }
             }
         }
 
         collectNetworkStorage(network, pipes, tanks);
+        LOG_INFO("FluidSystem: network {} rebuilt pipes={} tanks={} ports={} capacity={}",
+                 network.id,
+                 network.pipes.size(),
+                 network.tanks.size(),
+                 network.ports.size(),
+                 network.totalCapacity);
         m_Networks.push_back(network);
     }
 
+    LOG_INFO("FluidSystem: rebuilt {} networks", m_Networks.size());
     m_NetworksDirty = false;
 }
 
-const std::vector<FluidNetwork>& FluidSystem::getNetworks() const {
+const std::vector<FluidNetwork> &FluidSystem::getNetworks() const {
     return m_Networks;
 }
 
@@ -182,6 +192,16 @@ int FluidSystem::getNetworkIdForEntity(Entity entity) const {
     }
 
     return it->second;
+}
+
+const FluidDefinition* FluidSystem::getNetworkFluidForEntity(Entity entity) const {
+    const int networkId = getNetworkIdForEntity(entity);
+    if (networkId < 0) {
+        return nullptr;
+    }
+
+    const FluidNetwork* network = getNetworkById(networkId);
+    return network ? network->fluid.fluid : nullptr;
 }
 
 long long FluidSystem::makeTileKey(int tileX, int tileY) {
@@ -208,7 +228,7 @@ Direction FluidSystem::getOppositeDirection(Direction direction) {
     }
 }
 
-bool FluidSystem::pipeHasConnection(const FluidPipeComponent& pipe, Direction direction) {
+bool FluidSystem::pipeHasConnection(const FluidPipeComponent &pipe, Direction direction) {
     switch (direction) {
         case Direction::UP:
             return pipe.connectUp;
@@ -222,22 +242,22 @@ bool FluidSystem::pipeHasConnection(const FluidPipeComponent& pipe, Direction di
     }
 }
 
-bool FluidSystem::arePipeNeighborsConnected(const FluidPipeComponent& pipeA,
-                                            const FluidPipeComponent& pipeB,
+bool FluidSystem::arePipeNeighborsConnected(const FluidPipeComponent &pipeA,
+                                            const FluidPipeComponent &pipeB,
                                             Direction dirFromAToB) const {
     return pipeHasConnection(pipeA, dirFromAToB) &&
            pipeHasConnection(pipeB, getOppositeDirection(dirFromAToB));
 }
 
-void FluidSystem::collectNetworkStorage(FluidNetwork& network,
-                                        ComponentStorage<FluidPipeComponent>& pipes,
-                                        ComponentStorage<FluidTankComponent>& tanks) {
+void FluidSystem::collectNetworkStorage(FluidNetwork &network,
+                                        ComponentStorage<FluidPipeComponent> &pipes,
+                                        ComponentStorage<FluidTankComponent> &tanks) {
     network.totalCapacity = 0.0f;
     network.fluid.fluid = nullptr;
     network.fluid.amount = 0.0f;
 
-    for (Entity pipeEntity : network.pipes) {
-        FluidPipeComponent* pipe = pipes.get(pipeEntity);
+    for (Entity pipeEntity: network.pipes) {
+        FluidPipeComponent *pipe = pipes.get(pipeEntity);
         if (!pipe) {
             continue;
         }
@@ -259,8 +279,8 @@ void FluidSystem::collectNetworkStorage(FluidNetwork& network,
         network.fluid.amount += pipe->storage.amount;
     }
 
-    for (Entity tankEntity : network.tanks) {
-        FluidTankComponent* tank = tanks.get(tankEntity);
+    for (Entity tankEntity: network.tanks) {
+        FluidTankComponent *tank = tanks.get(tankEntity);
         if (!tank) {
             continue;
         }
@@ -283,20 +303,20 @@ void FluidSystem::collectNetworkStorage(FluidNetwork& network,
     }
 }
 
-void FluidSystem::refreshAllNetworkStorage(ComponentStorage<FluidPipeComponent>& pipes,
-                                           ComponentStorage<FluidTankComponent>& tanks) {
-    for (FluidNetwork& network : m_Networks) {
+void FluidSystem::refreshAllNetworkStorage(ComponentStorage<FluidPipeComponent> &pipes,
+                                           ComponentStorage<FluidTankComponent> &tanks) {
+    for (FluidNetwork &network: m_Networks) {
         collectNetworkStorage(network, pipes, tanks);
     }
 }
 
 void FluidSystem::processPumps(float deltaTime,
-                               ComponentStorage<FluidPumpComponent>& pumps,
-                               ComponentStorage<FluidPipeComponent>& pipes,
-                               ComponentStorage<FluidTankComponent>& tanks) {
-    const std::vector<Entity>& pumpEntities = pumps.getEntities();
-    for (Entity pumpEntity : pumpEntities) {
-        FluidPumpComponent* pump = pumps.get(pumpEntity);
+                               ComponentStorage<FluidPumpComponent> &pumps,
+                               ComponentStorage<FluidPipeComponent> &pipes,
+                               ComponentStorage<FluidTankComponent> &tanks) {
+    const std::vector<Entity> &pumpEntities = pumps.getEntities();
+    for (Entity pumpEntity: pumpEntities) {
+        FluidPumpComponent *pump = pumps.get(pumpEntity);
         if (!pump || !pump->outputFluid || pump->outputPerSecond <= 0.0f) {
             continue;
         }
@@ -306,13 +326,7 @@ void FluidSystem::processPumps(float deltaTime,
             continue;
         }
 
-        FluidNetwork* targetNetwork = nullptr;
-        for (FluidNetwork& network : m_Networks) {
-            if (network.id == networkId) {
-                targetNetwork = &network;
-                break;
-            }
-        }
+        FluidNetwork *targetNetwork = getMutableNetworkById(networkId);
 
         if (!targetNetwork) {
             continue;
@@ -327,10 +341,64 @@ void FluidSystem::processPumps(float deltaTime,
     }
 }
 
-float FluidSystem::fillNetworkTanks(FluidNetwork& network,
-                                    const FluidDefinition* fluid,
+float FluidSystem::extractFromNetwork(Entity entity,
+                                      const FluidDefinition* fluid,
+                                      float amount,
+                                      ComponentStorage<FluidPipeComponent>& pipes,
+                                      ComponentStorage<FluidTankComponent>& tanks) {
+    if (!fluid || amount <= 0.0f) {
+        return 0.0f;
+    }
+
+    FluidNetwork* network = getMutableNetworkById(getNetworkIdForEntity(entity));
+    if (!network || network->fluid.fluid != fluid || network->fluid.amount <= 0.0f) {
+        return 0.0f;
+    }
+
+    const float extracted = std::min(amount, network->fluid.amount);
+    network->fluid.amount -= extracted;
+    if (network->fluid.amount <= 0.0f) {
+        network->fluid.amount = 0.0f;
+        network->fluid.fluid = nullptr;
+    }
+    equalizeNetworkStorage(*network, pipes, tanks);
+    return extracted;
+}
+
+float FluidSystem::insertIntoNetwork(Entity entity,
+                                     const FluidDefinition* fluid,
+                                     float amount,
+                                     ComponentStorage<FluidPipeComponent>& pipes,
+                                     ComponentStorage<FluidTankComponent>& tanks) {
+    if (!fluid || amount <= 0.0f) {
+        return 0.0f;
+    }
+
+    FluidNetwork* network = getMutableNetworkById(getNetworkIdForEntity(entity));
+    if (!network) {
+        return 0.0f;
+    }
+
+    if (network->fluid.fluid && network->fluid.fluid != fluid) {
+        return 0.0f;
+    }
+
+    const float freeCapacity = std::max(0.0f, network->totalCapacity - network->fluid.amount);
+    if (freeCapacity <= 0.0f) {
+        return 0.0f;
+    }
+
+    const float inserted = std::min(amount, freeCapacity);
+    network->fluid.fluid = fluid;
+    network->fluid.amount += inserted;
+    equalizeNetworkStorage(*network, pipes, tanks);
+    return inserted;
+}
+
+float FluidSystem::fillNetworkTanks(FluidNetwork &network,
+                                    const FluidDefinition *fluid,
                                     float amount,
-                                    ComponentStorage<FluidTankComponent>& tanks) {
+                                    ComponentStorage<FluidTankComponent> &tanks) {
     if (!fluid || amount <= 0.0f) {
         return 0.0f;
     }
@@ -340,8 +408,8 @@ float FluidSystem::fillNetworkTanks(FluidNetwork& network,
     }
 
     float remaining = amount;
-    for (Entity tankEntity : network.tanks) {
-        FluidTankComponent* tank = tanks.get(tankEntity);
+    for (Entity tankEntity: network.tanks) {
+        FluidTankComponent *tank = tanks.get(tankEntity);
         if (!tank) {
             continue;
         }
@@ -368,19 +436,19 @@ float FluidSystem::fillNetworkTanks(FluidNetwork& network,
     return amount - remaining;
 }
 
-void FluidSystem::equalizeNetworkStorage(FluidNetwork& network,
-                                         ComponentStorage<FluidPipeComponent>& pipes,
-                                         ComponentStorage<FluidTankComponent>& tanks) {
+void FluidSystem::equalizeNetworkStorage(FluidNetwork &network,
+                                         ComponentStorage<FluidPipeComponent> &pipes,
+                                         ComponentStorage<FluidTankComponent> &tanks) {
     if (network.totalCapacity <= 0.0f) {
         return;
     }
 
-    const FluidDefinition* fluid = network.fluid.fluid;
+    const FluidDefinition *fluid = network.fluid.fluid;
     const float clampedAmount = std::clamp(network.fluid.amount, 0.0f, network.totalCapacity);
     const float fillRatio = clampedAmount / network.totalCapacity;
 
-    for (Entity pipeEntity : network.pipes) {
-        FluidPipeComponent* pipe = pipes.get(pipeEntity);
+    for (Entity pipeEntity: network.pipes) {
+        FluidPipeComponent *pipe = pipes.get(pipeEntity);
         if (!pipe) {
             continue;
         }
@@ -392,8 +460,8 @@ void FluidSystem::equalizeNetworkStorage(FluidNetwork& network,
         }
     }
 
-    for (Entity tankEntity : network.tanks) {
-        FluidTankComponent* tank = tanks.get(tankEntity);
+    for (Entity tankEntity: network.tanks) {
+        FluidTankComponent *tank = tanks.get(tankEntity);
         if (!tank) {
             continue;
         }
@@ -406,9 +474,37 @@ void FluidSystem::equalizeNetworkStorage(FluidNetwork& network,
     }
 }
 
-void FluidSystem::equalizeAllNetworks(ComponentStorage<FluidPipeComponent>& pipes,
-                                      ComponentStorage<FluidTankComponent>& tanks) {
-    for (FluidNetwork& network : m_Networks) {
+void FluidSystem::equalizeAllNetworks(ComponentStorage<FluidPipeComponent> &pipes,
+                                      ComponentStorage<FluidTankComponent> &tanks) {
+    for (FluidNetwork &network: m_Networks) {
         equalizeNetworkStorage(network, pipes, tanks);
     }
+}
+
+FluidNetwork* FluidSystem::getMutableNetworkById(int id) {
+    if (id < 0) {
+        return nullptr;
+    }
+
+    for (FluidNetwork& network : m_Networks) {
+        if (network.id == id) {
+            return &network;
+        }
+    }
+
+    return nullptr;
+}
+
+const FluidNetwork* FluidSystem::getNetworkById(int id) const {
+    if (id < 0) {
+        return nullptr;
+    }
+
+    for (const FluidNetwork& network : m_Networks) {
+        if (network.id == id) {
+            return &network;
+        }
+    }
+
+    return nullptr;
 }

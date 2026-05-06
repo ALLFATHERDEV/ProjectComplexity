@@ -25,6 +25,32 @@ Sprite getConveyorSpriteForDirection(const SpriteAtlas& atlas, Direction directi
     }
 }
 
+void createMachineFluidPorts(EntityManager& entityManager,
+                             ComponentStorage<PositionComponent>& positions,
+                             ComponentStorage<FluidPortComponent>& fluidPorts,
+                             ComponentStorage<MachineFluidPortLinkComponent>& machineFluidPortLinks,
+                             Entity machineEntity,
+                             Vec2f machinePosition,
+                             const std::vector<MachineFluidPortDefinition>& portDefinitions) {
+    for (const MachineFluidPortDefinition& portDefinition : portDefinitions) {
+        const Entity portEntity = entityManager.createEntity();
+        positions.add(portEntity, {{
+            machinePosition.x + static_cast<float>(portDefinition.localTileX * 32),
+            machinePosition.y + static_cast<float>(portDefinition.localTileY * 32)
+        }});
+        fluidPorts.add(portEntity, {portDefinition.type, portDefinition.side, portDefinition.maxTransferPerSecond});
+        machineFluidPortLinks.add(portEntity, {machineEntity, portDefinition.slotName, portDefinition.type});
+        LOG_INFO("EntityFactory: created machine fluid port entity={} machine={} slot={} type={} side={} localTile=({}, {})",
+                 portEntity,
+                 machineEntity,
+                 portDefinition.slotName,
+                 static_cast<int>(portDefinition.type),
+                 static_cast<int>(portDefinition.side),
+                 portDefinition.localTileX,
+                 portDefinition.localTileY);
+    }
+}
+
 Entity EntityFactory::createPlayer(Vec2f position) const {
     Entity player = m_EntityManager.createEntity();
     m_Positions.add(player, { position });
@@ -86,6 +112,26 @@ Entity EntityFactory::createCraftingMachine(Vec2f position, Sprite sprite, const
     }
     m_CraftingMachines.add(machine, crafting);
 
+    if (!machineDefinition.fluidPorts.empty()) {
+        MachineFluidComponent machineFluid;
+        for (const MachineFluidPortDefinition& portDefinition : machineDefinition.fluidPorts) {
+            MachineFluidSlot slot;
+            slot.name = portDefinition.slotName;
+            slot.capacity = portDefinition.capacity;
+            if (portDefinition.type == FluidPortType::OUTPUT) {
+                machineFluid.outputs.push_back(slot);
+            } else {
+                machineFluid.inputs.push_back(slot);
+            }
+        }
+        m_MachineFluids.add(machine, machineFluid);
+        createMachineFluidPorts(m_EntityManager, m_Positions, m_FluidPorts, m_MachineFluidPortLinks, machine, position, machineDefinition.fluidPorts);
+        LOG_INFO("EntityFactory: created crafting machine {} entity={} with {} fluid ports",
+                 machineDefinition.uniqueName,
+                 machine,
+                 machineDefinition.fluidPorts.size());
+    }
+
     InteractionComponent interaction;
     interaction.interactionName = machineDefinition.displayName.empty() ? "Crafting Machine" : machineDefinition.displayName;
     interaction.interactionBounds = {-8.0f, -8.0f, width + 16.0f, height + 16.0f};
@@ -123,6 +169,49 @@ Entity EntityFactory::createMiner(Vec2f position, Sprite sprite, const MinerMach
     m_Interactions.add(miner, interaction);
 
     return miner;
+}
+
+Entity EntityFactory::createFluidTankMachine(Vec2f position, Sprite sprite, const FluidTankMachineDefinition& machineDefinition) const {
+    Entity tank = m_EntityManager.createEntity();
+    const auto width = static_cast<float>(machineDefinition.widthTiles * 32);
+    const auto height = static_cast<float>(machineDefinition.heightTiles * 32);
+
+    m_Positions.add(tank, { position });
+    m_Sprites.add(tank, { sprite, 0, width, height });
+    m_Collisions.add(tank, { SDL_FRect(0.0f, 0.0f, width, height), true, false });
+    m_Machines.add(tank, { machineDefinition.uniqueName });
+    m_FluidTanks.add(tank, { {}, machineDefinition.capacity });
+
+    InteractionComponent interaction;
+    interaction.interactionName = machineDefinition.displayName.empty() ? "Fluid Tank" : machineDefinition.displayName;
+    interaction.interactionBounds = {-8.0f, -8.0f, width + 16.0f, height + 16.0f};
+    m_Interactions.add(tank, interaction);
+
+    return tank;
+}
+
+Entity EntityFactory::createFluidPumpMachine(Vec2f position,
+                                             Sprite sprite,
+                                             const FluidPumpMachineDefinition& machineDefinition,
+                                             Direction outputDirection,
+                                             const FluidDefinition* outputFluid) const {
+    Entity pump = m_EntityManager.createEntity();
+    const auto width = static_cast<float>(machineDefinition.widthTiles * 32);
+    const auto height = static_cast<float>(machineDefinition.heightTiles * 32);
+
+    m_Positions.add(pump, { position });
+    m_Sprites.add(pump, { sprite, 0, width, height });
+    m_Collisions.add(pump, { SDL_FRect(0.0f, 0.0f, width, height), true, false });
+    m_Machines.add(pump, { machineDefinition.uniqueName });
+    m_FluidPumps.add(pump, { outputFluid, machineDefinition.outputPerSecond });
+    m_FluidPorts.add(pump, { FluidPortType::OUTPUT, outputDirection, machineDefinition.outputPerSecond });
+
+    InteractionComponent interaction;
+    interaction.interactionName = machineDefinition.displayName.empty() ? "Fluid Pump" : machineDefinition.displayName;
+    interaction.interactionBounds = {-8.0f, -8.0f, width + 16.0f, height + 16.0f};
+    m_Interactions.add(pump, interaction);
+
+    return pump;
 }
 
 Entity EntityFactory::createConveyorBelt(Vec2f position, const SpriteAtlas& atlas, Direction direction) const {

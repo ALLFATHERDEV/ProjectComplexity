@@ -39,22 +39,32 @@ bool RecipeDatabase::loadRecipesFromFolder(const std::string& folderPath) {
         recipe.displayName = data.value("displayName", "");
         recipe.craftTime = data.value("craftTime", 1.0f);
 
-        if (data.contains("inputs") && data["inputs"].is_array()) {
-            for (const auto& inputData : data["inputs"]) {
+        //Loading Items
+        if (data.contains("itemInputs") && data["itemInputs"].is_array()) {
+            for (const auto& input : data["itemInputs"]) {
+                RecipeIngredient ingredient;
+                ingredient.itemName = input.value("itemName", input.value("item_name", ""));
+                ingredient.amount = input.value("amount", 1);
+                recipe.itemInputs.push_back(ingredient);
+            }
+        } else {
+            if (data.contains("inputs") && data["inputs"].is_array()) {
+                for (const auto& inputData : data["inputs"]) {
                 RecipeIngredient ingredient;
                 ingredient.itemName = inputData.value("itemName", inputData.value("item_name", ""));
                 ingredient.amount = inputData.value("amount", 1);
-                recipe.inputs.push_back(ingredient);
+                recipe.itemInputs.push_back(ingredient);
             }
         }
+        }
 
-        if (data.contains("outputs") && data["outputs"].is_array()) {
-            for (const auto& outputData : data["outputs"]) {
+        if (data.contains("itemOutputs") && data["itemOutputs"].is_array()) {
+            for (const auto& outputData : data["itemOutputs"]) {
                 RecipeIngredient output;
                 output.itemName = outputData.value("itemName", outputData.value("item_name", ""));
                 output.amount = outputData.value("amount", 1);
                 if (!output.itemName.empty()) {
-                    recipe.outputs.push_back(output);
+                    recipe.itemOutputs.push_back(output);
                 }
             }
         } else {
@@ -63,7 +73,36 @@ bool RecipeDatabase::loadRecipesFromFolder(const std::string& folderPath) {
                 RecipeIngredient output;
                 output.itemName = legacyOutputItemName;
                 output.amount = data.value("outputAmount", 1);
-                recipe.outputs.push_back(output);
+                recipe.itemOutputs.push_back(output);
+            }
+        }
+
+        //Loading fluids
+        if (data.contains("fluidInputs") && data["fluidInputs"].is_array()) {
+            for (const auto& inputData : data["fluidInputs"]) {
+                RecipeFluidStack fluidStack;
+                fluidStack.slotName = inputData.value("slotName", inputData.value("slot_name", ""));
+                fluidStack.fluidName = inputData.value("fluidName", inputData.value("fluid_name", ""));
+                fluidStack.amount = inputData.value("amount", 1.0f);
+                recipe.fluidInputs.push_back(fluidStack);
+            }
+        } else if (data.contains("inputFluids") && data["inputFluids"].is_array()) {
+            for (const auto& inputData : data["inputFluids"]) {
+                RecipeFluidStack fluidStack;
+                fluidStack.slotName = inputData.value("slotName", inputData.value("slot_name", ""));
+                fluidStack.fluidName = inputData.value("fluidName", inputData.value("fluid_name", ""));
+                fluidStack.amount = inputData.value("amount", 1.0f);
+                recipe.fluidInputs.push_back(fluidStack);
+            }
+        }
+
+        if (data.contains("fluidOutputs") && data["fluidOutputs"].is_array()) {
+            for (const auto& outputData : data["fluidOutputs"]) {
+                RecipeFluidStack fluidStack;
+                fluidStack.slotName = outputData.value("slotName", outputData.value("slot_name", ""));
+                fluidStack.fluidName = outputData.value("fluidName", outputData.value("fluid_name", ""));
+                fluidStack.amount = outputData.value("amount", 1.0f);
+                recipe.fluidOutputs.push_back(fluidStack);
             }
         }
 
@@ -72,7 +111,7 @@ bool RecipeDatabase::loadRecipesFromFolder(const std::string& folderPath) {
             continue;
         }
 
-        if (recipe.outputs.empty()) {
+        if (recipe.itemOutputs.empty() && recipe.fluidOutputs.empty()) {
             LOG_WARN("Recipe {} has no outputs, skipping recipe", recipe.uniqueName);
             continue;
         }

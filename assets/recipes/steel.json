@@ -1,7 +1,7 @@
 {
   "craftTime": 7.0,
   "displayName": "Steel",
-  "inputs": [
+  "itemInputs": [
     {
       "amount": 3,
       "itemName": "steel_ingot"
@@ -11,7 +11,7 @@
       "itemName": "iron_ingot"
     }
   ],
-  "outputs": [
+  "itemOutputs": [
     {
       "itemName": "copper_ingot",
       "amount": 2

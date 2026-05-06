@@ -21,6 +21,8 @@
 #include "../entities/component/InteractionComponent.hpp"
 #include "../entities/component/InventoryComponent.hpp"
 #include "../entities/component/MachineComponent.hpp"
+#include "../entities/component/MachineFluidComponent.hpp"
+#include "../entities/component/MachineFluidPortLinkComponent.hpp"
 #include "../entities/component/MachineInventoryComponent.hpp"
 #include "../entities/component/MinerComponent.hpp"
 #include "../entities/component/PositionComponent.hpp"
@@ -35,12 +37,14 @@
 #include "../entities/systems/FluidSystem.hpp"
 #include "../entities/systems/InputSystem.hpp"
 #include "../entities/systems/InteractionSystem.hpp"
+#include "../entities/systems/MachineFluidIOSystem.hpp"
 #include "../entities/systems/MovementInputSystem.hpp"
 #include "../entities/systems/MovementSystem.hpp"
 #include "../entities/systems/MiningSystem.hpp"
 #include "../entities/systems/RenderSystem.hpp"
 #include "../graphics/Renderer.hpp"
 #include "../graphics/SpriteAtlas.hpp"
+#include "../fluid/FluidDatabase.hpp"
 #include "../inventory/ItemDatabase.hpp"
 #include "../machine/MachineDatabase.hpp"
 #include "../map/TileMetadataDatabase.hpp"
@@ -87,17 +91,19 @@ public:
     ComponentStorage<FluidTankComponent>& getFluidTanks() { return m_FluidTanks; }
     ComponentStorage<FluidPumpComponent>& getFluidPumps() { return m_FluidPumps; }
     ComponentStorage<FluidPortComponent>& getFluidPorts() { return m_FluidPorts; }
+    ComponentStorage<MachineFluidComponent>& getMachineFluids() { return m_MachineFluids; }
     FluidSystem& getFluidSystem() { return m_FluidSystem; }
     const FluidSystem& getFluidSystem() const { return m_FluidSystem; }
     const RecipeDatabase& getRecipeDatabase() const { return m_RecipeDatabase; }
+    const FluidDatabase& getFluidDatabase() const { return m_FluidDatabase; }
     Entity getPlayer() const { return m_Player; }
     Vec2f getPlayerPosition() const;
     bool canPlaceItem(const ItemDefinition& item, int tileX, int tileY) const;
     bool placeItem(const ItemDefinition& item, int tileX, int tileY, Direction direction = Direction::RIGHT);
     void renderPlacementPreview(const ItemDefinition& item, int tileX, int tileY, Direction direction = Direction::RIGHT) const;
-    bool placeMachine(const std::string& machineUniqueName, int tileX, int tileY);
+    bool placeMachine(const std::string& machineUniqueName, int tileX, int tileY, Direction direction = Direction::RIGHT);
     void clearMachines();
-    std::vector<std::tuple<std::string, int, int>> getMachinePlacementData() const;
+    std::vector<std::tuple<std::string, int, int, Direction>> getMachinePlacementData() const;
     void placeConveyorBelt(int tileX, int tileY, Direction direction);
     void removeConveyorBelt(int tileX, int tileY);
     void placeFluidPipe(int tileX, int tileY, Direction direction = Direction::RIGHT);
@@ -138,6 +144,7 @@ private:
 
     EntityManager m_EntityManager;
     RecipeDatabase m_RecipeDatabase;
+    FluidDatabase m_FluidDatabase;
 
     ComponentStorage<PositionComponent> m_Positions;
     ComponentStorage<SpriteComponent> m_Sprites;
@@ -153,6 +160,8 @@ private:
     ComponentStorage<FluidTankComponent> m_FluidTanks;
     ComponentStorage<FluidPumpComponent> m_FluidPumps;
     ComponentStorage<FluidPortComponent> m_FluidPorts;
+    ComponentStorage<MachineFluidComponent> m_MachineFluids;
+    ComponentStorage<MachineFluidPortLinkComponent> m_MachineFluidPortLinks;
     ComponentStorage<InventoryComponent> m_Inventories;
     ComponentStorage<MachineComponent> m_MachineEntities;
     ComponentStorage<MachineInventoryComponent> m_MachineInventories;
@@ -176,6 +185,7 @@ private:
     ConveyorSystem m_ConveyorSystem;
     CraftingSystem m_CraftingSystem;
     FluidSystem m_FluidSystem;
+    MachineFluidIOSystem m_MachineFluidIOSystem;
     FluidManager m_FluidManager;
     MiningSystem m_MiningSystem;
     InteractionSystem m_InteractionSystem;

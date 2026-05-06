@@ -28,6 +28,17 @@ public:
 
     const std::vector<FluidNetwork>& getNetworks() const;
     int getNetworkIdForEntity(Entity entity) const;
+    const FluidDefinition* getNetworkFluidForEntity(Entity entity) const;
+    float extractFromNetwork(Entity entity,
+                             const FluidDefinition* fluid,
+                             float amount,
+                             ComponentStorage<FluidPipeComponent>& pipes,
+                             ComponentStorage<FluidTankComponent>& tanks);
+    float insertIntoNetwork(Entity entity,
+                            const FluidDefinition* fluid,
+                            float amount,
+                            ComponentStorage<FluidPipeComponent>& pipes,
+                            ComponentStorage<FluidTankComponent>& tanks);
 
 private:
     static long long makeTileKey(int tileX, int tileY);
@@ -61,4 +72,6 @@ private:
     bool m_NetworksDirty = true;
     int m_NextNetworkId = 1;
     std::unordered_map<Entity, int> m_EntityToNetworkId;
+    FluidNetwork* getMutableNetworkById(int id);
+    const FluidNetwork* getNetworkById(int id) const;
 };

@@ -1,0 +1,16 @@
+{
+  "displayName": "Pump",
+  "fuelValue": 0.0,
+  "iconAtlasX": 6,
+  "iconAtlasY": 1,
+  "id": 14,
+  "isPlaceable": true,
+  "maxStackSize": 1,
+  "placeableBlocking": true,
+  "placeableHeightTiles": 1,
+  "placeableLayer": 1,
+  "placeableTexturePath": "assets/pipes.png",
+  "placeableWidthTiles": 1,
+  "placedMachineUniqueName": "fluid_pump",
+  "uniqueName": "test_pump_item"
+}

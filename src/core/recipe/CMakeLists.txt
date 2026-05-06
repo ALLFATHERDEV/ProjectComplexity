@@ -3,4 +3,5 @@ target_sources(ProjectComplexity PRIVATE
         RecipeDefinition.hpp
         RecipeDatabase.hpp
         RecipeDatabase.cpp
+        RecipeFluidStack.hpp
 )

@@ -1,14 +1,17 @@
 #pragma once
+#include <array>
 #include "../GUISystem.hpp"
 #include "../../entities/ComponentStorage.hpp"
 #include "../../entities/Entity.hpp"
 #include "../../entities/component/CraftingMachineComponent.hpp"
 #include "../../entities/component/InventoryComponent.hpp"
+#include "../../entities/component/MachineFluidComponent.hpp"
 #include "../../entities/component/MachineInventoryComponent.hpp"
 #include "../../entities/component/MinerComponent.hpp"
 #include "../../inventory/ItemDatabase.hpp"
 #include "../../recipe/RecipeDatabase.hpp"
 #include "../elements/GUIButton.hpp"
+#include "../elements/GUIFluidSlot.hpp"
 #include "../elements/GUIInventoryGrid.hpp"
 #include "../elements/GUIPanel.hpp"
 #include "../elements/GUIProgressBar.hpp"
@@ -27,6 +30,7 @@ public:
     bool isPlayerInventoryOpen() const;
 
     void bind(ComponentStorage<MachineInventoryComponent>* machineInventories,
+              ComponentStorage<MachineFluidComponent>* machineFluids,
               ComponentStorage<CraftingMachineComponent>* craftingMachines,
               ComponentStorage<MinerComponent>* miners,
               const RecipeDatabase* recipeDatabase,
@@ -47,6 +51,7 @@ private:
     const ItemDatabase* m_ItemDatabase = nullptr;
 
     ComponentStorage<MachineInventoryComponent>* m_MachineInventories = nullptr;
+    ComponentStorage<MachineFluidComponent>* m_MachineFluids = nullptr;
     ComponentStorage<CraftingMachineComponent>* m_CraftingMachines = nullptr;
     ComponentStorage<MinerComponent>* m_Miners = nullptr;
     ComponentStorage<InventoryComponent>* m_Inventories = nullptr;
@@ -60,6 +65,8 @@ private:
     GUIInventoryGrid* m_StorageGrid = nullptr;
     GUIProgressBar* m_ProgressBar = nullptr;
     GUIText* m_MinerInfoText = nullptr;
+    std::array<GUIFluidSlot*, 4> m_InputFluidSlots{};
+    std::array<GUIFluidSlot*, 4> m_OutputFluidSlots{};
     GUIPanel* m_PlayerInventoryPanel = nullptr;
     GUIInventoryGrid* m_PlayerInventoryGrid = nullptr;
     std::vector<GUIButton*> m_RecipeButtons;
@@ -85,4 +92,6 @@ private:
     const ItemDefinition* getOutputSlotBackgroundItem(int slotX, int slotY) const;
     bool canAcceptOutputStack(const ItemStack& stack) const;
     bool canAcceptOutputStackAtSlot(int slotX, int slotY, const ItemStack& stack) const;
+    void updateFluidWidgets();
+    void setFluidWidgetsVisible(bool visible);
 };

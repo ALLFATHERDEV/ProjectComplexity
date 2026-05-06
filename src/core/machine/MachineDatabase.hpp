@@ -19,4 +19,6 @@ public:
 private:
     std::unordered_map<std::string, std::unique_ptr<MachineDefinition>> m_Machines;
     MachineType stringToMachineType(const std::string& str) const;
+    FluidPortType stringToFluidPortType(const std::string& str) const;
+    Direction stringToDirection(const std::string& str) const;
 };

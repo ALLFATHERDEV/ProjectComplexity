@@ -3,12 +3,33 @@
   "availableRecipes": [
     "test_recipe",
     "test_recipe2",
-    "steel"
+    "steel",
+    "test_fluid_recipe"
   ],
   "displayName": "Crafting Machine",
   "fuelHeight": 1,
   "fuelWidth": 1,
   "heightTiles": 1,
+  "fluidPorts": [
+    {
+      "slotName": "water_in",
+      "type": "input",
+      "side": "left",
+      "localTileX": 0,
+      "localTileY": 0,
+      "capacity": 100.0,
+      "maxTransferPerSecond": 25.0
+    },
+    {
+      "slotName": "acid_out",
+      "type": "output",
+      "side": "right",
+      "localTileX": 0,
+      "localTileY": 0,
+      "capacity": 100.0,
+      "maxTransferPerSecond": 25.0
+    }
+  ],
   "requiresFuel": true,
   "spriteAtlasX": 1,
   "spriteAtlasY": 6,

@@ -1,0 +1,13 @@
+{
+  "uniqueName": "fluid_pump",
+  "displayName": "Fluid Pump",
+  "type": "fluid_pump",
+  "spritePaletteName": "Fluid",
+  "spriteAtlasX": 3,
+  "spriteAtlasY": 2,
+  "widthTiles": 1,
+  "heightTiles": 1,
+  "requiresFuel": false,
+  "outputPerSecond": 100.0,
+  "allowedPlacementTags": []
+}

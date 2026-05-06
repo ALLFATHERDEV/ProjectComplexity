@@ -43,6 +43,7 @@ Game::Game(){
 
     m_MachineGUI.create(m_GUISystem, &m_GUIDragContext);
     m_MachineGUI.bind(&m_World.getMachineInventories(),
+                      &m_World.getMachineFluids(),
                       &m_World.getCraftingMachines(),
                       &m_World.getMiners(),
                       &m_World.getRecipeDatabase(),
