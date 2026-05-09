@@ -62,7 +62,7 @@ TileMapGenerator::BiomeType resolveBiome(const TileMapGenerator::Config& config,
     return TileMapGenerator::BiomeType::Plains;
 }
 
-void TileMapGenerator::generateTerrain(TileMap& tileMap, SpriteAtlas& atlas, const Config& config) {
+void TileMapGenerator::generateTerrain(TileMap& tileMap, SpriteAtlas& atlas, const Config& config, const TileAnimationDatabase* tileAnimationDatabase) {
     tileMap.clear();
 
     TileMapLayer groundLayer;
@@ -91,7 +91,8 @@ void TileMapGenerator::generateTerrain(TileMap& tileMap, SpriteAtlas& atlas, con
                 "Overworld",
                 tileConfig.atlasX,
                 tileConfig.atlasY,
-                tileConfig.isBlocking
+                tileConfig.isBlocking,
+                tileAnimationDatabase
             );
         }
     }

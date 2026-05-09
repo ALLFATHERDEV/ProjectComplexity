@@ -122,6 +122,7 @@ bool RecipeDatabase::loadRecipesFromFolder(const std::string& folderPath) {
         }
 
         m_Recipes[recipe.uniqueName] = recipe;
+        LOG_INFO("Loaded recipe {}", recipe.uniqueName);
     }
 
     LOG_INFO("Loaded {} recipes from folder {}", m_Recipes.size(), folderPath);

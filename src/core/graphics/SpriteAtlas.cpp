@@ -8,6 +8,7 @@ void SpriteAtlas::createAtlas(const Renderer* renderer, int spriteWidth, int spr
         LOG_ERROR("Could not load texture: {}", SDL_GetError());
         return;
     }
+    SDL_SetTextureScaleMode(m_Texture, SDL_SCALEMODE_NEAREST);
 
     m_SpriteWidth = spriteWidth;
     m_SpriteHeight = spriteHeight;

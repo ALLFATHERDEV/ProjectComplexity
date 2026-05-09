@@ -4,6 +4,7 @@
 
 class SpriteAtlas;
 class TileMap;
+class TileAnimationDatabase;
 
 class TileMapGenerator {
 public:
@@ -29,7 +30,7 @@ public:
         TileConfig desertTile{10, 1, false};
         TileConfig stoneTile{7, 1, false};
         TileConfig lavaTile{3, 8, true};
-        TileConfig waterTile{2, 0, true};
+        TileConfig waterTile{1, 4, true};
         double waterNoiseScale = 28.0;
         int waterOctaves = 4;
         double waterPersistence = 0.5;
@@ -43,5 +44,5 @@ public:
         double desertHeatThreshold = 0.12;
     };
 
-    static void generateTerrain(TileMap& tileMap, SpriteAtlas& atlas, const Config& config);
+    static void generateTerrain(TileMap& tileMap, SpriteAtlas& atlas, const Config& config, const TileAnimationDatabase* tileAnimationDatabase = nullptr);
 };

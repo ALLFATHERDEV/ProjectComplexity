@@ -18,11 +18,12 @@ using json = nlohmann::json;
 enum class EditorSection {
     Items,
     Recipes,
+    Fluids,
     Entity,
     Animations
 };
 
-constexpr std::size_t kSectionCount = 4;
+constexpr std::size_t kSectionCount = 5;
 
 struct ItemRecord {
     std::filesystem::path filePath;
@@ -41,6 +42,7 @@ struct ItemRecord {
     bool placeableBlocking = true;
     int placeableLayer = 1;
     std::string placedMachineUniqueName;
+    bool placesConveyorBelt = false;
     bool placesStorageContainer = false;
     int containerInventoryWidth = 4;
     int containerInventoryHeight = 4;
@@ -56,9 +58,32 @@ struct RecipeRecord {
     bool dirty = false;
     std::string uniqueName;
     std::string displayName;
-    std::vector<RecipeInputRecord> inputs;
-    std::vector<RecipeInputRecord> outputs;
+    std::vector<RecipeInputRecord> itemInputs;
+    std::vector<RecipeInputRecord> itemOutputs;
+    std::vector<std::string> fluidInputSlotNames;
+    std::vector<std::string> fluidInputNames;
+    std::vector<float> fluidInputAmounts;
+    std::vector<std::string> fluidOutputSlotNames;
+    std::vector<std::string> fluidOutputNames;
+    std::vector<float> fluidOutputAmounts;
     float craftTime = 1.0f;
+};
+
+struct FluidRecord {
+    std::filesystem::path filePath;
+    bool dirty = false;
+    std::string uniqueName;
+    std::string displayName;
+};
+
+struct MachineFluidPortRecord {
+    std::string slotName;
+    std::string type = "input";
+    std::string side = "right";
+    int localTileX = 0;
+    int localTileY = 0;
+    float capacity = 100.0f;
+    float maxTransferPerSecond = 50.0f;
 };
 
 struct MachineRecord {
@@ -69,6 +94,8 @@ struct MachineRecord {
     std::string type;
     std::vector<std::string> availableRecipes;
     std::vector<std::string> allowedPlacementTags;
+    std::vector<MachineFluidPortRecord> fluidPorts;
+    std::string spritePaletteName = "Overworld";
     int spriteAtlasX = 0;
     int spriteAtlasY = 0;
     int widthTiles = 1;
@@ -77,6 +104,8 @@ struct MachineRecord {
     int fuelWidth = 1;
     int fuelHeight = 1;
     float miningSpeed = 1.0f;
+    float capacity = 1000.0f;
+    float outputPerSecond = 100.0f;
 };
 
 struct AnimationFrameRecord {
@@ -103,6 +132,7 @@ struct EditorDataStore {
     std::filesystem::path projectRoot;
     std::vector<ItemRecord> items;
     std::vector<RecipeRecord> recipes;
+    std::vector<FluidRecord> fluids;
     std::vector<MachineRecord> machines;
     std::vector<AnimationFileRecord> animationFiles;
     std::vector<std::string> loadErrors;
@@ -129,7 +159,8 @@ struct AtlasResource {
 
 struct EditorAtlases {
     AtlasResource itemAtlas;
-    AtlasResource machineAtlas;
+    AtlasResource overworldAtlas;
+    AtlasResource fluidAtlas;
     AtlasResource animationAtlas;
     std::string animationAtlasPath;
 };
@@ -140,6 +171,8 @@ std::string sectionLabel(const EditorSection section) {
             return "Items";
         case EditorSection::Recipes:
             return "Rezepte";
+        case EditorSection::Fluids:
+            return "Fluids";
         case EditorSection::Entity:
             return "Entity";
         case EditorSection::Animations:
@@ -155,6 +188,7 @@ std::filesystem::path findProjectRoot() {
     while (!current.empty()) {
         if (std::filesystem::exists(current / "assets" / "items") &&
             std::filesystem::exists(current / "assets" / "recipes") &&
+            std::filesystem::exists(current / "assets" / "fluids") &&
             std::filesystem::exists(current / "assets" / "machines") &&
             std::filesystem::exists(current / "CMakeLists.txt")) {
             return current;
@@ -215,7 +249,11 @@ EditorAtlases loadEditorAtlases(const std::filesystem::path& projectRoot,
         loadErrors.push_back(errorMessage);
     }
     errorMessage.clear();
-    if (!loadAtlasResource(renderer, projectRoot / "assets" / "tilesets" / "Map_tiles.png", 32, 32, atlases.machineAtlas, errorMessage)) {
+    if (!loadAtlasResource(renderer, projectRoot / "assets" / "Overworld_Tileset.png", 32, 32, atlases.overworldAtlas, errorMessage)) {
+        loadErrors.push_back(errorMessage);
+    }
+    errorMessage.clear();
+    if (!loadAtlasResource(renderer, projectRoot / "assets" / "pipes.png", 32, 32, atlases.fluidAtlas, errorMessage)) {
         loadErrors.push_back(errorMessage);
     }
 
@@ -311,6 +349,7 @@ EditorDataStore loadEditorData() {
             item.placeableBlocking = data.value("placeableBlocking", true);
             item.placeableLayer = data.value("placeableLayer", 1);
             item.placedMachineUniqueName = data.value("placedMachineUniqueName", "");
+            item.placesConveyorBelt = data.value("placesConveyorBelt", false);
             item.placesStorageContainer = data.value("placesStorageContainer", false);
             item.containerInventoryWidth = data.value("containerInventoryWidth", 4);
             item.containerInventoryHeight = data.value("containerInventoryHeight", 4);
@@ -329,32 +368,81 @@ EditorDataStore loadEditorData() {
             recipe.displayName = data.value("displayName", "");
             recipe.craftTime = data.value("craftTime", 1.0f);
 
-            if (data.contains("inputs") && data["inputs"].is_array()) {
+            if (data.contains("itemInputs") && data["itemInputs"].is_array()) {
+                for (const auto& inputData : data["itemInputs"]) {
+                    RecipeInputRecord input;
+                    input.itemName = inputData.value("itemName", inputData.value("item_name", ""));
+                    input.amount = inputData.value("amount", 1);
+                    recipe.itemInputs.push_back(std::move(input));
+                }
+            } else if (data.contains("inputs") && data["inputs"].is_array()) {
                 for (const auto& inputData : data["inputs"]) {
                     RecipeInputRecord input;
                     input.itemName = inputData.value("itemName", inputData.value("item_name", ""));
                     input.amount = inputData.value("amount", 1);
-                    recipe.inputs.push_back(std::move(input));
+                    recipe.itemInputs.push_back(std::move(input));
                 }
             }
 
-            if (data.contains("outputs") && data["outputs"].is_array()) {
+            if (data.contains("itemOutputs") && data["itemOutputs"].is_array()) {
+                for (const auto& outputData : data["itemOutputs"]) {
+                    RecipeInputRecord output;
+                    output.itemName = outputData.value("itemName", outputData.value("item_name", ""));
+                    output.amount = outputData.value("amount", 1);
+                    recipe.itemOutputs.push_back(std::move(output));
+                }
+            } else if (data.contains("outputs") && data["outputs"].is_array()) {
                 for (const auto& outputData : data["outputs"]) {
                     RecipeInputRecord output;
                     output.itemName = outputData.value("itemName", outputData.value("item_name", ""));
                     output.amount = outputData.value("amount", 1);
-                    recipe.outputs.push_back(std::move(output));
+                    recipe.itemOutputs.push_back(std::move(output));
                 }
             } else {
                 RecipeInputRecord legacyOutput;
                 legacyOutput.itemName = data.value("outputItemName", "");
                 legacyOutput.amount = data.value("outputAmount", 1);
                 if (!legacyOutput.itemName.empty()) {
-                    recipe.outputs.push_back(std::move(legacyOutput));
+                    recipe.itemOutputs.push_back(std::move(legacyOutput));
+                }
+            }
+
+            if (data.contains("fluidInputs") && data["fluidInputs"].is_array()) {
+                for (const auto& inputData : data["fluidInputs"]) {
+                    recipe.fluidInputSlotNames.push_back(inputData.value("slotName", inputData.value("slot_name", "")));
+                    recipe.fluidInputNames.push_back(inputData.value("fluidName", inputData.value("fluid_name", "")));
+                    recipe.fluidInputAmounts.push_back(inputData.value("amount", 1.0f));
+                }
+            } else if (data.contains("inputFluids") && data["inputFluids"].is_array()) {
+                for (const auto& inputData : data["inputFluids"]) {
+                    recipe.fluidInputSlotNames.push_back(inputData.value("slotName", inputData.value("slot_name", "")));
+                    recipe.fluidInputNames.push_back(inputData.value("fluidName", inputData.value("fluid_name", "")));
+                    recipe.fluidInputAmounts.push_back(inputData.value("amount", 1.0f));
+                }
+            }
+
+            if (data.contains("fluidOutputs") && data["fluidOutputs"].is_array()) {
+                for (const auto& outputData : data["fluidOutputs"]) {
+                    recipe.fluidOutputSlotNames.push_back(outputData.value("slotName", outputData.value("slot_name", "")));
+                    recipe.fluidOutputNames.push_back(outputData.value("fluidName", outputData.value("fluid_name", "")));
+                    recipe.fluidOutputAmounts.push_back(outputData.value("amount", 1.0f));
                 }
             }
 
             return recipe;
+        }
+    );
+
+    loadJsonFolder(
+        dataStore.projectRoot / "assets" / "fluids",
+        dataStore.fluids,
+        dataStore.loadErrors,
+        [](const std::filesystem::path& filePath, const json& data) {
+            FluidRecord fluid;
+            fluid.filePath = filePath;
+            fluid.uniqueName = data.value("uniqueName", "");
+            fluid.displayName = data.value("displayName", "");
+            return fluid;
         }
     );
 
@@ -368,6 +456,7 @@ EditorDataStore loadEditorData() {
             machine.uniqueName = data.value("uniqueName", "");
             machine.displayName = data.value("displayName", "");
             machine.type = data.value("type", "");
+            machine.spritePaletteName = data.value("spritePaletteName", "Overworld");
             machine.spriteAtlasX = data.value("spriteAtlasX", 0);
             machine.spriteAtlasY = data.value("spriteAtlasY", 0);
             machine.widthTiles = data.value("widthTiles", 1);
@@ -376,6 +465,8 @@ EditorDataStore loadEditorData() {
             machine.fuelWidth = data.value("fuelWidth", 1);
             machine.fuelHeight = data.value("fuelHeight", 1);
             machine.miningSpeed = data.value("miningSpeed", 1.0f);
+            machine.capacity = data.value("capacity", 1000.0f);
+            machine.outputPerSecond = data.value("outputPerSecond", 100.0f);
 
             if (data.contains("availableRecipes") && data["availableRecipes"].is_array()) {
                 for (const auto& recipeName : data["availableRecipes"]) {
@@ -390,6 +481,24 @@ EditorDataStore loadEditorData() {
                     if (tag.is_string()) {
                         machine.allowedPlacementTags.push_back(tag.get<std::string>());
                     }
+                }
+            }
+
+            if (data.contains("fluidPorts") && data["fluidPorts"].is_array()) {
+                for (const auto& portData : data["fluidPorts"]) {
+                    if (!portData.is_object()) {
+                        continue;
+                    }
+
+                    MachineFluidPortRecord port;
+                    port.slotName = portData.value("slotName", portData.value("slot_name", ""));
+                    port.type = portData.value("type", "input");
+                    port.side = portData.value("side", "right");
+                    port.localTileX = portData.value("localTileX", portData.value("local_tile_x", 0));
+                    port.localTileY = portData.value("localTileY", portData.value("local_tile_y", 0));
+                    port.capacity = portData.value("capacity", 100.0f);
+                    port.maxTransferPerSecond = portData.value("maxTransferPerSecond", portData.value("max_transfer_per_second", 50.0f));
+                    machine.fluidPorts.push_back(std::move(port));
                 }
             }
 
@@ -440,6 +549,8 @@ std::filesystem::path sectionFolderPath(const EditorDataStore& dataStore, const 
             return dataStore.projectRoot / "assets" / "items";
         case EditorSection::Recipes:
             return dataStore.projectRoot / "assets" / "recipes";
+        case EditorSection::Fluids:
+            return dataStore.projectRoot / "assets" / "fluids";
         case EditorSection::Entity:
             return dataStore.projectRoot / "assets" / "machines";
         case EditorSection::Animations:
@@ -517,6 +628,16 @@ bool hasDuplicateRecipeUniqueName(const EditorDataStore& dataStore, const Recipe
     int matches = 0;
     for (const RecipeRecord& other : dataStore.recipes) {
         if (other.uniqueName == recipe.uniqueName) {
+            ++matches;
+        }
+    }
+    return matches > 1;
+}
+
+bool hasDuplicateFluidUniqueName(const EditorDataStore& dataStore, const FluidRecord& fluid) {
+    int matches = 0;
+    for (const FluidRecord& other : dataStore.fluids) {
+        if (other.uniqueName == fluid.uniqueName) {
             ++matches;
         }
     }
@@ -620,11 +741,18 @@ bool validateRecipeRecord(const EditorDataStore& dataStore, const RecipeRecord& 
         errorMessage = "Recipe requires a display name.";
         return false;
     }
-    if (recipe.outputs.empty()) {
-        errorMessage = "Recipe requires at least one output item.";
+    if (recipe.itemOutputs.empty() && recipe.fluidOutputNames.empty()) {
+        errorMessage = "Recipe requires at least one output.";
         return false;
     }
-    for (const RecipeInputRecord& input : recipe.inputs) {
+    if (recipe.fluidInputSlotNames.size() != recipe.fluidInputNames.size() ||
+        recipe.fluidInputNames.size() != recipe.fluidInputAmounts.size() ||
+        recipe.fluidOutputSlotNames.size() != recipe.fluidOutputNames.size() ||
+        recipe.fluidOutputNames.size() != recipe.fluidOutputAmounts.size()) {
+        errorMessage = "Recipe fluid data is inconsistent.";
+        return false;
+    }
+    for (const RecipeInputRecord& input : recipe.itemInputs) {
         if (input.itemName.empty()) {
             errorMessage = "Each input requires an item name.";
             return false;
@@ -634,7 +762,7 @@ bool validateRecipeRecord(const EditorDataStore& dataStore, const RecipeRecord& 
             return false;
         }
     }
-    for (const RecipeInputRecord& output : recipe.outputs) {
+    for (const RecipeInputRecord& output : recipe.itemOutputs) {
         if (output.itemName.empty()) {
             errorMessage = "Each output requires an item name.";
             return false;
@@ -643,6 +771,42 @@ bool validateRecipeRecord(const EditorDataStore& dataStore, const RecipeRecord& 
             errorMessage = "Each output amount must be at least 1.";
             return false;
         }
+    }
+    for (std::size_t index = 0; index < recipe.fluidInputNames.size(); ++index) {
+        if (recipe.fluidInputNames[index].empty()) {
+            errorMessage = "Each fluid input requires a fluid name.";
+            return false;
+        }
+        if (recipe.fluidInputAmounts[index] < 0.0f) {
+            errorMessage = "Fluid input amount must not be negative.";
+            return false;
+        }
+    }
+    for (std::size_t index = 0; index < recipe.fluidOutputNames.size(); ++index) {
+        if (recipe.fluidOutputNames[index].empty()) {
+            errorMessage = "Each fluid output requires a fluid name.";
+            return false;
+        }
+        if (recipe.fluidOutputAmounts[index] < 0.0f) {
+            errorMessage = "Fluid output amount must not be negative.";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool validateFluidRecord(const EditorDataStore& dataStore, const FluidRecord& fluid, std::string& errorMessage) {
+    if (fluid.uniqueName.empty()) {
+        errorMessage = "Fluid requires a unique name.";
+        return false;
+    }
+    if (hasDuplicateFluidUniqueName(dataStore, fluid)) {
+        errorMessage = "Fluid Unique Name existiert bereits.";
+        return false;
+    }
+    if (fluid.displayName.empty()) {
+        errorMessage = "Fluid requires a display name.";
+        return false;
     }
     return true;
 }
@@ -660,8 +824,15 @@ bool validateMachineRecord(const EditorDataStore& dataStore, const MachineRecord
         errorMessage = "Entity requires a display name.";
         return false;
     }
-    if (machine.type != "crafting" && machine.type != "miner") {
-        errorMessage = "Type must be 'crafting' or 'miner'.";
+    if (machine.type != "crafting" &&
+        machine.type != "miner" &&
+        machine.type != "fluid_tank" &&
+        machine.type != "fluid_pump") {
+        errorMessage = "Type must be 'crafting', 'miner', 'fluid_tank' or 'fluid_pump'.";
+        return false;
+    }
+    if (machine.spritePaletteName.empty()) {
+        errorMessage = "Sprite palette name is required.";
         return false;
     }
     if (machine.widthTiles < 1 || machine.heightTiles < 1) {
@@ -687,6 +858,36 @@ bool validateMachineRecord(const EditorDataStore& dataStore, const MachineRecord
     if (machine.type == "miner" && machine.miningSpeed < 0.0f) {
         errorMessage = "Mining Speed must not be negative.";
         return false;
+    }
+    if (machine.type == "fluid_tank" && machine.capacity < 0.0f) {
+        errorMessage = "Capacity must not be negative.";
+        return false;
+    }
+    if (machine.type == "fluid_pump" && machine.outputPerSecond < 0.0f) {
+        errorMessage = "Output Per Second must not be negative.";
+        return false;
+    }
+    for (const MachineFluidPortRecord& port : machine.fluidPorts) {
+        if (port.slotName.empty()) {
+            errorMessage = "Fluid port slot name is required.";
+            return false;
+        }
+        if (port.type != "input" && port.type != "output" && port.type != "bidirectional") {
+            errorMessage = "Fluid port type must be input, output or bidirectional.";
+            return false;
+        }
+        if (port.side != "up" && port.side != "down" && port.side != "left" && port.side != "right") {
+            errorMessage = "Fluid port side must be up, down, left or right.";
+            return false;
+        }
+        if (port.localTileX < 0 || port.localTileY < 0) {
+            errorMessage = "Fluid port tile coordinates must not be negative.";
+            return false;
+        }
+        if (port.capacity < 0.0f || port.maxTransferPerSecond < 0.0f) {
+            errorMessage = "Fluid port capacity and transfer rate must not be negative.";
+            return false;
+        }
     }
     return true;
 }
@@ -811,6 +1012,15 @@ int findRecipeIndexByUniqueName(const EditorDataStore& dataStore, const std::str
     return -1;
 }
 
+int findFluidIndexByUniqueName(const EditorDataStore& dataStore, const std::string& uniqueName) {
+    for (int index = 0; index < static_cast<int>(dataStore.fluids.size()); ++index) {
+        if (dataStore.fluids[index].uniqueName == uniqueName) {
+            return index;
+        }
+    }
+    return -1;
+}
+
 int findMachineIndexByUniqueName(const EditorDataStore& dataStore, const std::string& uniqueName) {
     for (int index = 0; index < static_cast<int>(dataStore.machines.size()); ++index) {
         if (dataStore.machines[index].uniqueName == uniqueName) {
@@ -857,6 +1067,7 @@ bool saveItemRecord(ItemRecord& item, std::string& errorMessage) {
         data["placeableHeightTiles"] = item.placeableHeightTiles;
         data["placeableBlocking"] = item.placeableBlocking;
         data["placeableLayer"] = item.placeableLayer;
+        data["placesConveyorBelt"] = item.placesConveyorBelt;
 
         if (!item.placedMachineUniqueName.empty()) {
             data["placedMachineUniqueName"] = item.placedMachineUniqueName;
@@ -898,19 +1109,37 @@ bool saveRecipeRecord(RecipeRecord& recipe, std::string& errorMessage) {
     data["displayName"] = recipe.displayName;
     data["craftTime"] = recipe.craftTime;
 
-    data["inputs"] = json::array();
-    for (const RecipeInputRecord& input : recipe.inputs) {
-        data["inputs"].push_back({
+    data["itemInputs"] = json::array();
+    for (const RecipeInputRecord& input : recipe.itemInputs) {
+        data["itemInputs"].push_back({
             {"itemName", input.itemName},
             {"amount", input.amount}
         });
     }
 
-    data["outputs"] = json::array();
-    for (const RecipeInputRecord& output : recipe.outputs) {
-        data["outputs"].push_back({
+    data["itemOutputs"] = json::array();
+    for (const RecipeInputRecord& output : recipe.itemOutputs) {
+        data["itemOutputs"].push_back({
             {"itemName", output.itemName},
             {"amount", output.amount}
+        });
+    }
+
+    data["fluidInputs"] = json::array();
+    for (std::size_t index = 0; index < recipe.fluidInputNames.size(); ++index) {
+        data["fluidInputs"].push_back({
+            {"slotName", recipe.fluidInputSlotNames[index]},
+            {"fluidName", recipe.fluidInputNames[index]},
+            {"amount", recipe.fluidInputAmounts[index]}
+        });
+    }
+
+    data["fluidOutputs"] = json::array();
+    for (std::size_t index = 0; index < recipe.fluidOutputNames.size(); ++index) {
+        data["fluidOutputs"].push_back({
+            {"slotName", recipe.fluidOutputSlotNames[index]},
+            {"fluidName", recipe.fluidOutputNames[index]},
+            {"amount", recipe.fluidOutputAmounts[index]}
         });
     }
 
@@ -936,12 +1165,41 @@ bool saveRecipeRecord(RecipeRecord& recipe, std::string& errorMessage) {
     }
 }
 
+bool saveFluidRecord(FluidRecord& fluid, std::string& errorMessage) {
+    const std::filesystem::path targetFilePath = buildUniqueFilePathForRename(fluid.filePath, fluid.uniqueName);
+    json data;
+    data["uniqueName"] = fluid.uniqueName;
+    data["displayName"] = fluid.displayName;
+
+    try {
+        std::ofstream file(targetFilePath);
+        if (!file.is_open()) {
+            errorMessage = "Could not open file for writing: " + targetFilePath.string();
+            return false;
+        }
+
+        file << data.dump(2) << '\n';
+        file.close();
+
+        if (targetFilePath != fluid.filePath && std::filesystem::exists(fluid.filePath)) {
+            std::filesystem::remove(fluid.filePath);
+        }
+
+        fluid.filePath = targetFilePath;
+        return true;
+    } catch (const std::exception& exception) {
+        errorMessage = exception.what();
+        return false;
+    }
+}
+
 bool saveMachineRecord(MachineRecord& machine, std::string& errorMessage) {
     const std::filesystem::path targetFilePath = buildUniqueFilePathForRename(machine.filePath, machine.uniqueName);
     json data;
     data["uniqueName"] = machine.uniqueName;
     data["displayName"] = machine.displayName;
     data["type"] = machine.type;
+    data["spritePaletteName"] = machine.spritePaletteName;
     data["spriteAtlasX"] = machine.spriteAtlasX;
     data["spriteAtlasY"] = machine.spriteAtlasY;
     data["widthTiles"] = machine.widthTiles;
@@ -960,8 +1218,25 @@ bool saveMachineRecord(MachineRecord& machine, std::string& errorMessage) {
         data["allowedPlacementTags"].push_back(tag);
     }
 
+    data["fluidPorts"] = json::array();
+    for (const MachineFluidPortRecord& port : machine.fluidPorts) {
+        data["fluidPorts"].push_back({
+            {"slotName", port.slotName},
+            {"type", port.type},
+            {"side", port.side},
+            {"localTileX", port.localTileX},
+            {"localTileY", port.localTileY},
+            {"capacity", port.capacity},
+            {"maxTransferPerSecond", port.maxTransferPerSecond}
+        });
+    }
+
     if (machine.type == "miner") {
         data["miningSpeed"] = machine.miningSpeed;
+    } else if (machine.type == "fluid_tank") {
+        data["capacity"] = machine.capacity;
+    } else if (machine.type == "fluid_pump") {
+        data["outputPerSecond"] = machine.outputPerSecond;
     }
 
     try {
@@ -1084,6 +1359,28 @@ bool saveAllDirtyRecords(EditorDataStore& dataStore) {
         ++savedCount;
     }
 
+    for (FluidRecord& fluid : dataStore.fluids) {
+        if (!fluid.dirty) {
+            continue;
+        }
+
+        std::string errorMessage;
+        if (!validateFluidRecord(dataStore, fluid, errorMessage)) {
+            dataStore.statusMessage = "Save All failed for fluid '" + fluid.uniqueName + "': " + errorMessage;
+            dataStore.statusIsError = true;
+            return false;
+        }
+
+        if (!saveFluidRecord(fluid, errorMessage)) {
+            dataStore.statusMessage = "Save All failed for fluid '" + fluid.uniqueName + "': " + errorMessage;
+            dataStore.statusIsError = true;
+            return false;
+        }
+
+        fluid.dirty = false;
+        ++savedCount;
+    }
+
     for (MachineRecord& machine : dataStore.machines) {
         if (!machine.dirty) {
             continue;
@@ -1144,6 +1441,11 @@ bool hasAnyDirtyRecords(const EditorDataStore& dataStore) {
             return true;
         }
     }
+    for (const FluidRecord& fluid : dataStore.fluids) {
+        if (fluid.dirty) {
+            return true;
+        }
+    }
     for (const MachineRecord& machine : dataStore.machines) {
         if (machine.dirty) {
             return true;
@@ -1170,14 +1472,16 @@ void performReload(EditorDataStore& dataStore,
                    std::array<int, kSectionCount>& selectedIndices) {
     dataStore = loadEditorData();
     releaseAtlas(atlases.itemAtlas);
-    releaseAtlas(atlases.machineAtlas);
+    releaseAtlas(atlases.overworldAtlas);
+    releaseAtlas(atlases.fluidAtlas);
     releaseAtlas(atlases.animationAtlas);
     atlases.animationAtlasPath.clear();
     atlases = loadEditorAtlases(dataStore.projectRoot, renderer, dataStore.loadErrors);
     clampSelectedIndex(selectedIndices[0], dataStore.items.size());
     clampSelectedIndex(selectedIndices[1], dataStore.recipes.size());
-    clampSelectedIndex(selectedIndices[2], dataStore.machines.size());
-    clampSelectedIndex(selectedIndices[3], dataStore.animationFiles.size());
+    clampSelectedIndex(selectedIndices[2], dataStore.fluids.size());
+    clampSelectedIndex(selectedIndices[3], dataStore.machines.size());
+    clampSelectedIndex(selectedIndices[4], dataStore.animationFiles.size());
     dataStore.statusMessage = "Data reloaded.";
     dataStore.statusIsError = false;
 }
@@ -1214,10 +1518,18 @@ void createNewEntry(EditorDataStore& dataStore, const EditorSection section, std
         recipe.dirty = true;
         recipe.uniqueName = "new_recipe";
         recipe.displayName = "New Recipe";
-        recipe.outputs.push_back({"item_name", 1});
+        recipe.itemOutputs.push_back({"new_item", 1});
         recipe.filePath = buildUniqueFilePath(folderPath, recipe.uniqueName);
         dataStore.recipes.push_back(recipe);
         selectedIndices[1] = static_cast<int>(dataStore.recipes.size()) - 1;
+    } else if (section == EditorSection::Fluids) {
+        FluidRecord fluid;
+        fluid.dirty = true;
+        fluid.uniqueName = "new_fluid";
+        fluid.displayName = "New Fluid";
+        fluid.filePath = buildUniqueFilePath(folderPath, fluid.uniqueName);
+        dataStore.fluids.push_back(fluid);
+        selectedIndices[2] = static_cast<int>(dataStore.fluids.size()) - 1;
     } else if (section == EditorSection::Entity) {
         MachineRecord machine;
         machine.dirty = true;
@@ -1226,7 +1538,7 @@ void createNewEntry(EditorDataStore& dataStore, const EditorSection section, std
         machine.type = "crafting";
         machine.filePath = buildUniqueFilePath(folderPath, machine.uniqueName);
         dataStore.machines.push_back(machine);
-        selectedIndices[2] = static_cast<int>(dataStore.machines.size()) - 1;
+        selectedIndices[3] = static_cast<int>(dataStore.machines.size()) - 1;
     } else if (section == EditorSection::Animations) {
         AnimationFileRecord animationFile;
         animationFile.dirty = true;
@@ -1238,7 +1550,7 @@ void createNewEntry(EditorDataStore& dataStore, const EditorSection section, std
         clip.frames.push_back({0, 0});
         animationFile.animations.push_back(std::move(clip));
         dataStore.animationFiles.push_back(std::move(animationFile));
-        selectedIndices[3] = static_cast<int>(dataStore.animationFiles.size()) - 1;
+        selectedIndices[4] = static_cast<int>(dataStore.animationFiles.size()) - 1;
     }
 
     dataStore.statusMessage = sectionLabel(section) + " entry created. Edit and save it now.";
@@ -1269,8 +1581,19 @@ void deleteCurrentEntry(EditorDataStore& dataStore, const EditorSection section,
             }
             dataStore.recipes.erase(dataStore.recipes.begin() + index);
             clampSelectedIndex(selectedIndices[1], dataStore.recipes.size());
-        } else if (section == EditorSection::Entity) {
+        } else if (section == EditorSection::Fluids) {
             const int index = selectedIndices[2];
+            if (index < 0 || index >= static_cast<int>(dataStore.fluids.size())) {
+                return;
+            }
+            const std::filesystem::path filePath = dataStore.fluids[index].filePath;
+            if (std::filesystem::exists(filePath)) {
+                std::filesystem::remove(filePath);
+            }
+            dataStore.fluids.erase(dataStore.fluids.begin() + index);
+            clampSelectedIndex(selectedIndices[2], dataStore.fluids.size());
+        } else if (section == EditorSection::Entity) {
+            const int index = selectedIndices[3];
             if (index < 0 || index >= static_cast<int>(dataStore.machines.size())) {
                 return;
             }
@@ -1279,9 +1602,9 @@ void deleteCurrentEntry(EditorDataStore& dataStore, const EditorSection section,
                 std::filesystem::remove(filePath);
             }
             dataStore.machines.erase(dataStore.machines.begin() + index);
-            clampSelectedIndex(selectedIndices[2], dataStore.machines.size());
+            clampSelectedIndex(selectedIndices[3], dataStore.machines.size());
         } else if (section == EditorSection::Animations) {
-            const int index = selectedIndices[3];
+            const int index = selectedIndices[4];
             if (index < 0 || index >= static_cast<int>(dataStore.animationFiles.size())) {
                 return;
             }
@@ -1290,7 +1613,7 @@ void deleteCurrentEntry(EditorDataStore& dataStore, const EditorSection section,
                 std::filesystem::remove(filePath);
             }
             dataStore.animationFiles.erase(dataStore.animationFiles.begin() + index);
-            clampSelectedIndex(selectedIndices[3], dataStore.animationFiles.size());
+            clampSelectedIndex(selectedIndices[4], dataStore.animationFiles.size());
         }
 
         dataStore.statusMessage = sectionLabel(section) + " entry deleted.";
@@ -1317,6 +1640,11 @@ void renderMainMenuBar(EditorSection& selectedSection,
     ImGui::SameLine();
     if (ImGui::Selectable("Rezepte", selectedSection == EditorSection::Recipes, 0, ImVec2(80.0f, 0.0f))) {
         selectedSection = EditorSection::Recipes;
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Selectable("Fluids", selectedSection == EditorSection::Fluids, 0, ImVec2(80.0f, 0.0f))) {
+        selectedSection = EditorSection::Fluids;
     }
 
     ImGui::SameLine();
@@ -1370,6 +1698,7 @@ void renderItemDetails(ItemRecord& item, EditorDataStore& dataStore, const Edito
         changed |= ImGui::InputInt("Height Tiles", &item.placeableHeightTiles);
         changed |= ImGui::Checkbox("Blocking", &item.placeableBlocking);
         changed |= ImGui::InputInt("Layer", &item.placeableLayer);
+        changed |= ImGui::Checkbox("Places Conveyor Belt", &item.placesConveyorBelt);
 
         int placedMachineIndex = findMachineIndexByUniqueName(dataStore, item.placedMachineUniqueName);
         changed |= renderStringSelection(
@@ -1444,10 +1773,10 @@ void renderRecipeDetails(RecipeRecord& recipe, EditorDataStore& dataStore) {
     }
 
     ImGui::Separator();
-    ImGui::TextUnformatted("Inputs");
+    ImGui::TextUnformatted("Item Inputs");
 
-    for (int index = 0; index < static_cast<int>(recipe.inputs.size()); ++index) {
-        RecipeInputRecord& input = recipe.inputs[index];
+    for (int index = 0; index < static_cast<int>(recipe.itemInputs.size()); ++index) {
+        RecipeInputRecord& input = recipe.itemInputs[index];
         ImGui::PushID(index);
         int inputItemIndex = findItemIndexByUniqueName(dataStore, input.itemName);
         changed |= renderStringSelection(
@@ -1462,7 +1791,7 @@ void renderRecipeDetails(RecipeRecord& recipe, EditorDataStore& dataStore) {
         changed |= ImGui::InputInt("Amount", &input.amount);
         ImGui::SameLine();
         if (ImGui::Button("Remove")) {
-            recipe.inputs.erase(recipe.inputs.begin() + index);
+            recipe.itemInputs.erase(recipe.itemInputs.begin() + index);
             changed = true;
             ImGui::PopID();
             break;
@@ -1474,16 +1803,16 @@ void renderRecipeDetails(RecipeRecord& recipe, EditorDataStore& dataStore) {
         ImGui::PopID();
     }
 
-    if (ImGui::Button("Add Input")) {
-        recipe.inputs.push_back({});
+    if (ImGui::Button("Add Item Input")) {
+        recipe.itemInputs.push_back({});
         changed = true;
     }
 
     ImGui::Separator();
-    ImGui::TextUnformatted("Outputs");
+    ImGui::TextUnformatted("Item Outputs");
 
-    for (int index = 0; index < static_cast<int>(recipe.outputs.size()); ++index) {
-        RecipeInputRecord& output = recipe.outputs[index];
+    for (int index = 0; index < static_cast<int>(recipe.itemOutputs.size()); ++index) {
+        RecipeInputRecord& output = recipe.itemOutputs[index];
         ImGui::PushID(index + 1000);
         int outputItemIndex = findItemIndexByUniqueName(dataStore, output.itemName);
         changed |= renderStringSelection(
@@ -1498,7 +1827,7 @@ void renderRecipeDetails(RecipeRecord& recipe, EditorDataStore& dataStore) {
         changed |= ImGui::InputInt("Amount", &output.amount);
         ImGui::SameLine();
         if (ImGui::Button("Remove")) {
-            recipe.outputs.erase(recipe.outputs.begin() + index);
+            recipe.itemOutputs.erase(recipe.itemOutputs.begin() + index);
             changed = true;
             ImGui::PopID();
             break;
@@ -1510,8 +1839,84 @@ void renderRecipeDetails(RecipeRecord& recipe, EditorDataStore& dataStore) {
         ImGui::PopID();
     }
 
-    if (ImGui::Button("Add Output")) {
-        recipe.outputs.push_back({});
+    if (ImGui::Button("Add Item Output")) {
+        recipe.itemOutputs.push_back({});
+        changed = true;
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Fluid Inputs");
+
+    for (int index = 0; index < static_cast<int>(recipe.fluidInputNames.size()); ++index) {
+        ImGui::PushID(index + 2000);
+        int fluidIndex = findFluidIndexByUniqueName(dataStore, recipe.fluidInputNames[index]);
+        changed |= ImGui::InputText("Slot", &recipe.fluidInputSlotNames[index]);
+        changed |= renderStringSelection(
+            "Fluid",
+            recipe.fluidInputNames[index],
+            fluidIndex,
+            static_cast<int>(dataStore.fluids.size()),
+            [&dataStore](const int fluidDataIndex) { return dataStore.fluids[fluidDataIndex].uniqueName.c_str(); }
+        );
+        changed |= ImGui::InputFloat("Amount", &recipe.fluidInputAmounts[index], 1.0f, 10.0f, "%.2f");
+        if (recipe.fluidInputAmounts[index] < 0.0f) {
+            recipe.fluidInputAmounts[index] = 0.0f;
+            changed = true;
+        }
+        if (ImGui::Button("Remove")) {
+            recipe.fluidInputSlotNames.erase(recipe.fluidInputSlotNames.begin() + index);
+            recipe.fluidInputNames.erase(recipe.fluidInputNames.begin() + index);
+            recipe.fluidInputAmounts.erase(recipe.fluidInputAmounts.begin() + index);
+            changed = true;
+            ImGui::PopID();
+            break;
+        }
+        ImGui::Separator();
+        ImGui::PopID();
+    }
+
+    if (ImGui::Button("Add Fluid Input")) {
+        recipe.fluidInputSlotNames.emplace_back();
+        recipe.fluidInputNames.emplace_back();
+        recipe.fluidInputAmounts.push_back(0.0f);
+        changed = true;
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Fluid Outputs");
+
+    for (int index = 0; index < static_cast<int>(recipe.fluidOutputNames.size()); ++index) {
+        ImGui::PushID(index + 3000);
+        int fluidIndex = findFluidIndexByUniqueName(dataStore, recipe.fluidOutputNames[index]);
+        changed |= ImGui::InputText("Slot", &recipe.fluidOutputSlotNames[index]);
+        changed |= renderStringSelection(
+            "Fluid",
+            recipe.fluidOutputNames[index],
+            fluidIndex,
+            static_cast<int>(dataStore.fluids.size()),
+            [&dataStore](const int fluidDataIndex) { return dataStore.fluids[fluidDataIndex].uniqueName.c_str(); }
+        );
+        changed |= ImGui::InputFloat("Amount", &recipe.fluidOutputAmounts[index], 1.0f, 10.0f, "%.2f");
+        if (recipe.fluidOutputAmounts[index] < 0.0f) {
+            recipe.fluidOutputAmounts[index] = 0.0f;
+            changed = true;
+        }
+        if (ImGui::Button("Remove")) {
+            recipe.fluidOutputSlotNames.erase(recipe.fluidOutputSlotNames.begin() + index);
+            recipe.fluidOutputNames.erase(recipe.fluidOutputNames.begin() + index);
+            recipe.fluidOutputAmounts.erase(recipe.fluidOutputAmounts.begin() + index);
+            changed = true;
+            ImGui::PopID();
+            break;
+        }
+        ImGui::Separator();
+        ImGui::PopID();
+    }
+
+    if (ImGui::Button("Add Fluid Output")) {
+        recipe.fluidOutputSlotNames.emplace_back();
+        recipe.fluidOutputNames.emplace_back();
+        recipe.fluidOutputAmounts.push_back(0.0f);
         changed = true;
     }
 
@@ -1534,6 +1939,37 @@ void renderRecipeDetails(RecipeRecord& recipe, EditorDataStore& dataStore) {
     }
 }
 
+void renderFluidDetails(FluidRecord& fluid, EditorDataStore& dataStore) {
+    bool changed = false;
+    ImGui::Text("File: %s", fluid.filePath.filename().string().c_str());
+    ImGui::Text("Path: %s", fluid.filePath.string().c_str());
+    ImGui::Separator();
+
+    changed |= ImGui::InputText("Unique Name", &fluid.uniqueName);
+    changed |= ImGui::InputText("Display Name", &fluid.displayName);
+    fluid.dirty |= changed;
+
+    ImGui::Separator();
+    if (ImGui::Button("Save Fluid")) {
+        std::string errorMessage;
+        if (!validateFluidRecord(dataStore, fluid, errorMessage)) {
+            dataStore.statusMessage = "Save failed: " + errorMessage;
+            dataStore.statusIsError = true;
+        } else if (saveFluidRecord(fluid, errorMessage)) {
+            fluid.dirty = false;
+            dataStore.statusMessage = "Fluid saved: " + fluid.filePath.filename().string();
+            dataStore.statusIsError = false;
+        } else {
+            dataStore.statusMessage = "Save failed: " + errorMessage;
+            dataStore.statusIsError = true;
+        }
+    }
+}
+
+const AtlasResource& atlasForMachinePalette(const EditorAtlases& atlases, const std::string& paletteName) {
+    return paletteName == "Fluid" ? atlases.fluidAtlas : atlases.overworldAtlas;
+}
+
 void renderMachineDetails(MachineRecord& machine, EditorDataStore& dataStore, const EditorAtlases& atlases) {
     bool changed = false;
     ImGui::Text("File: %s", machine.filePath.filename().string().c_str());
@@ -1542,7 +1978,32 @@ void renderMachineDetails(MachineRecord& machine, EditorDataStore& dataStore, co
 
     changed |= ImGui::InputText("Unique Name", &machine.uniqueName);
     changed |= ImGui::InputText("Display Name", &machine.displayName);
-    changed |= ImGui::InputText("Type", &machine.type);
+    int typeIndex =
+        machine.type == "crafting" ? 0 :
+        machine.type == "miner" ? 1 :
+        machine.type == "fluid_tank" ? 2 :
+        machine.type == "fluid_pump" ? 3 : -1;
+    changed |= renderStringSelection(
+        "Type",
+        machine.type,
+        typeIndex,
+        4,
+        [](const int index) {
+            static const char* options[] = {"crafting", "miner", "fluid_tank", "fluid_pump"};
+            return options[index];
+        }
+    );
+    int paletteIndex = machine.spritePaletteName == "Fluid" ? 1 : 0;
+    changed |= renderStringSelection(
+        "Sprite Palette",
+        machine.spritePaletteName,
+        paletteIndex,
+        2,
+        [](const int index) {
+            static const char* options[] = {"Overworld", "Fluid"};
+            return options[index];
+        }
+    );
     changed |= ImGui::InputInt("Sprite Atlas X", &machine.spriteAtlasX);
     changed |= ImGui::InputInt("Sprite Atlas Y", &machine.spriteAtlasY);
     changed |= ImGui::InputInt("Width Tiles", &machine.widthTiles);
@@ -1550,10 +2011,14 @@ void renderMachineDetails(MachineRecord& machine, EditorDataStore& dataStore, co
     changed |= ImGui::Checkbox("Requires Fuel", &machine.requiresFuel);
     changed |= ImGui::InputInt("Fuel Width", &machine.fuelWidth);
     changed |= ImGui::InputInt("Fuel Height", &machine.fuelHeight);
-    changed |= renderAtlasPicker("Machine Sprite Atlas", atlases.machineAtlas, machine.spriteAtlasX, machine.spriteAtlasY);
+    changed |= renderAtlasPicker("Machine Sprite Atlas", atlasForMachinePalette(atlases, machine.spritePaletteName), machine.spriteAtlasX, machine.spriteAtlasY);
 
     if (machine.type == "miner") {
         changed |= ImGui::InputFloat("Mining Speed", &machine.miningSpeed, 0.1f, 1.0f, "%.2f");
+    } else if (machine.type == "fluid_tank") {
+        changed |= ImGui::InputFloat("Capacity", &machine.capacity, 10.0f, 100.0f, "%.2f");
+    } else if (machine.type == "fluid_pump") {
+        changed |= ImGui::InputFloat("Output Per Second", &machine.outputPerSecond, 1.0f, 10.0f, "%.2f");
     }
 
     if (machine.widthTiles < 1) {
@@ -1574,6 +2039,14 @@ void renderMachineDetails(MachineRecord& machine, EditorDataStore& dataStore, co
     }
     if (machine.miningSpeed < 0.0f) {
         machine.miningSpeed = 0.0f;
+        changed = true;
+    }
+    if (machine.capacity < 0.0f) {
+        machine.capacity = 0.0f;
+        changed = true;
+    }
+    if (machine.outputPerSecond < 0.0f) {
+        machine.outputPerSecond = 0.0f;
         changed = true;
     }
 
@@ -1621,6 +2094,72 @@ void renderMachineDetails(MachineRecord& machine, EditorDataStore& dataStore, co
 
     if (ImGui::Button("Add Tag")) {
         machine.allowedPlacementTags.emplace_back();
+        changed = true;
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Fluid Ports");
+    for (int index = 0; index < static_cast<int>(machine.fluidPorts.size()); ++index) {
+        MachineFluidPortRecord& port = machine.fluidPorts[index];
+        ImGui::PushID(index + 2000);
+        changed |= ImGui::InputText("Slot Name", &port.slotName);
+        int portTypeIndex = port.type == "output" ? 1 : (port.type == "bidirectional" ? 2 : 0);
+        changed |= renderStringSelection(
+            "Port Type",
+            port.type,
+            portTypeIndex,
+            3,
+            [](const int optionIndex) {
+                static const char* options[] = {"input", "output", "bidirectional"};
+                return options[optionIndex];
+            }
+        );
+        int sideIndex =
+            port.side == "up" ? 0 :
+            port.side == "down" ? 1 :
+            port.side == "left" ? 2 : 3;
+        changed |= renderStringSelection(
+            "Side",
+            port.side,
+            sideIndex,
+            4,
+            [](const int optionIndex) {
+                static const char* options[] = {"up", "down", "left", "right"};
+                return options[optionIndex];
+            }
+        );
+        changed |= ImGui::InputInt("Local Tile X", &port.localTileX);
+        changed |= ImGui::InputInt("Local Tile Y", &port.localTileY);
+        changed |= ImGui::InputFloat("Port Capacity", &port.capacity, 1.0f, 10.0f, "%.2f");
+        changed |= ImGui::InputFloat("Max Transfer / s", &port.maxTransferPerSecond, 1.0f, 10.0f, "%.2f");
+        if (port.localTileX < 0) {
+            port.localTileX = 0;
+            changed = true;
+        }
+        if (port.localTileY < 0) {
+            port.localTileY = 0;
+            changed = true;
+        }
+        if (port.capacity < 0.0f) {
+            port.capacity = 0.0f;
+            changed = true;
+        }
+        if (port.maxTransferPerSecond < 0.0f) {
+            port.maxTransferPerSecond = 0.0f;
+            changed = true;
+        }
+        if (ImGui::Button("Remove")) {
+            machine.fluidPorts.erase(machine.fluidPorts.begin() + index);
+            changed = true;
+            ImGui::PopID();
+            break;
+        }
+        ImGui::Separator();
+        ImGui::PopID();
+    }
+
+    if (ImGui::Button("Add Fluid Port")) {
+        machine.fluidPorts.push_back({});
         changed = true;
     }
 
@@ -1798,6 +2337,18 @@ void renderEntryList(const EditorSection selectedSection, const EditorDataStore&
                     selectedIndex = index;
                 }
             }
+        } else if (selectedSection == EditorSection::Fluids) {
+            for (int index = 0; index < static_cast<int>(dataStore.fluids.size()); ++index) {
+                const FluidRecord& fluid = dataStore.fluids[index];
+                const std::string label = fluid.uniqueName.empty() ? fluid.filePath.stem().string() : fluid.uniqueName;
+                if (!matchesSearchTerm(label, searchTerm)) {
+                    continue;
+                }
+                const std::string displayLabel = label + dirtyMarker(fluid);
+                if (ImGui::Selectable(displayLabel.c_str(), selectedIndex == index)) {
+                    selectedIndex = index;
+                }
+            }
         } else if (selectedSection == EditorSection::Entity) {
             for (int index = 0; index < static_cast<int>(dataStore.machines.size()); ++index) {
                 const MachineRecord& machine = dataStore.machines[index];
@@ -1873,6 +2424,14 @@ void renderDetailsPanel(const EditorSection selectedSection,
                 ImGui::TextUnformatted(dataStore.recipes[selectedIndex].dirty ? "Status: Unsaved changes" : "Status: Saved");
                 ImGui::Separator();
                 renderRecipeDetails(dataStore.recipes[selectedIndex], dataStore);
+            }
+        } else if (selectedSection == EditorSection::Fluids) {
+            if (selectedIndex < 0 || selectedIndex >= static_cast<int>(dataStore.fluids.size())) {
+                ImGui::TextUnformatted("No fluid selected");
+            } else {
+                ImGui::TextUnformatted(dataStore.fluids[selectedIndex].dirty ? "Status: Unsaved changes" : "Status: Saved");
+                ImGui::Separator();
+                renderFluidDetails(dataStore.fluids[selectedIndex], dataStore);
             }
         } else if (selectedSection == EditorSection::Entity) {
             if (selectedIndex < 0 || selectedIndex >= static_cast<int>(dataStore.machines.size())) {
@@ -2077,11 +2636,12 @@ int main(int argc, char* argv[]) {
     EditorSection selectedSection = EditorSection::Items;
     EditorDataStore dataStore = loadEditorData();
     EditorAtlases atlases = loadEditorAtlases(dataStore.projectRoot, renderer, dataStore.loadErrors);
-    std::array<int, kSectionCount> selectedIndices{0, 0, 0, 0};
+    std::array<int, kSectionCount> selectedIndices{0, 0, 0, 0, 0};
     clampSelectedIndex(selectedIndices[0], dataStore.items.size());
     clampSelectedIndex(selectedIndices[1], dataStore.recipes.size());
-    clampSelectedIndex(selectedIndices[2], dataStore.machines.size());
-    clampSelectedIndex(selectedIndices[3], dataStore.animationFiles.size());
+    clampSelectedIndex(selectedIndices[2], dataStore.fluids.size());
+    clampSelectedIndex(selectedIndices[3], dataStore.machines.size());
+    clampSelectedIndex(selectedIndices[4], dataStore.animationFiles.size());
     bool running = true;
 
     while (running) {
@@ -2118,7 +2678,8 @@ int main(int argc, char* argv[]) {
     ImGui::DestroyContext();
 
     releaseAtlas(atlases.itemAtlas);
-    releaseAtlas(atlases.machineAtlas);
+    releaseAtlas(atlases.overworldAtlas);
+    releaseAtlas(atlases.fluidAtlas);
     releaseAtlas(atlases.animationAtlas);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

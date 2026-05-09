@@ -4,18 +4,24 @@
 #include <algorithm>
 #include <numeric>
 
+std::vector<size_t> AnimatedRenderSystem::m_DrawOder;
+size_t AnimatedRenderSystem::m_LastSpriteCount = 0;
+bool AnimatedRenderSystem::m_DrawOrderDirty = 0;
+
 void AnimatedRenderSystem::render(Renderer* renderer, const Camera2D& camera, const ChunkManager& chunkManager, ComponentStorage<PositionComponent>& positions, ComponentStorage<AnimationControllerComponent>& controllers) {
     auto& controllerArray = controllers.getRaw();
     auto& entities = controllers.getEntities();
 
-    std::vector<size_t> drawOrder(controllerArray.size());
-    std::iota(drawOrder.begin(), drawOrder.end(), 0);
+    if (m_DrawOder.size() != controllerArray.size()) {
+        m_DrawOder.resize(controllerArray.size());
+    }
+    std::iota(m_DrawOder.begin(), m_DrawOder.end(), 0);
 
-    std::stable_sort(drawOrder.begin(), drawOrder.end(), [&](size_t a, size_t b) {
+    std::stable_sort(m_DrawOder.begin(), m_DrawOder.end(), [&](size_t a, size_t b) {
         return controllerArray[a].sortOrder < controllerArray[b].sortOrder;
     });
 
-    for (size_t index : drawOrder) {
+    for (size_t index : m_DrawOder) {
         Entity entity = entities[index];
 
         auto* position = positions.get(entity);

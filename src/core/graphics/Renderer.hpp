@@ -5,6 +5,13 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include "Sprite.hpp"
 #include <string>
+#include <unordered_map>
+
+struct CachedText {
+    SDL_Texture* texture = nullptr;
+    int width = 0;
+    int height = 0;
+};
 
 class Renderer {
 public:
@@ -24,6 +31,9 @@ public:
 private:
     SDL_Renderer* m_Renderer = nullptr;
     TTF_Font* m_Font = nullptr;
+    std::unordered_map<std::string, CachedText> m_TextCache;
+
+    std::string makeTextCacheKey(const std::string& text, SDL_Color color);
 };
 
 #endif //PROJECTCOMPLEXITY_RENDERER_H

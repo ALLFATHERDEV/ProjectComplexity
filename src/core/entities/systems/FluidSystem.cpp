@@ -7,37 +7,35 @@
 #include <unordered_set>
 
 #include "../../Logger.hpp"
+#include "../../world/contexts/FluidContext.hpp"
 
-void FluidSystem::update(float deltaTime,
-                         ComponentStorage<PositionComponent> &positions,
-                         ComponentStorage<FluidPipeComponent> &pipes,
-                         ComponentStorage<FluidTankComponent> &tanks,
-                         ComponentStorage<FluidPumpComponent> &pumps,
-                         ComponentStorage<FluidPortComponent> &ports) {
+void FluidSystem::update(float deltaTime, FluidContext& context) {
     if (m_NetworksDirty) {
-        rebuildNetworks(positions, pipes, tanks, ports);
+        rebuildNetworks(context);
     }
 
-    refreshAllNetworkStorage(pipes, tanks);
-    equalizeAllNetworks(pipes, tanks);
-    refreshAllNetworkStorage(pipes, tanks);
-    processPumps(deltaTime, pumps, pipes, tanks);
-    refreshAllNetworkStorage(pipes, tanks);
-    equalizeAllNetworks(pipes, tanks);
-    refreshAllNetworkStorage(pipes, tanks);
+    refreshAllNetworkStorage(context.fluidPipes, context.fluidTanks);
+    equalizeAllNetworks(context.fluidPipes, context.fluidTanks);
+    refreshAllNetworkStorage(context.fluidPipes, context.fluidTanks);
+    processPumps(deltaTime, context.fluidPumps, context.fluidPipes, context.fluidTanks);
+    refreshAllNetworkStorage(context.fluidPipes, context.fluidTanks);
+    equalizeAllNetworks(context.fluidPipes, context.fluidTanks);
+    refreshAllNetworkStorage(context.fluidPipes, context.fluidTanks);
 }
 
 void FluidSystem::markNetworksDirty() {
     m_NetworksDirty = true;
 }
 
-void FluidSystem::rebuildNetworks(ComponentStorage<PositionComponent> &positions,
-                                  ComponentStorage<FluidPipeComponent> &pipes,
-                                  ComponentStorage<FluidTankComponent> &tanks,
-                                  ComponentStorage<FluidPortComponent> &ports) {
+void FluidSystem::rebuildNetworks(FluidContext& context) {
     m_Networks.clear();
     m_EntityToNetworkId.clear();
     m_NextNetworkId = 1;
+
+    auto& pipes = context.fluidPipes;
+    auto& positions = context.positions;
+    auto& tanks = context.fluidTanks;
+    auto& ports = context.fluidPorts;
 
     std::unordered_map<long long, Entity> pipeEntitiesByTile;
     std::unordered_map<long long, Entity> tankEntitiesByTile;
@@ -341,11 +339,7 @@ void FluidSystem::processPumps(float deltaTime,
     }
 }
 
-float FluidSystem::extractFromNetwork(Entity entity,
-                                      const FluidDefinition* fluid,
-                                      float amount,
-                                      ComponentStorage<FluidPipeComponent>& pipes,
-                                      ComponentStorage<FluidTankComponent>& tanks) {
+float FluidSystem::extractFromNetwork(Entity entity,const FluidDefinition* fluid,float amount,FluidContext& context) {
     if (!fluid || amount <= 0.0f) {
         return 0.0f;
     }
@@ -361,15 +355,11 @@ float FluidSystem::extractFromNetwork(Entity entity,
         network->fluid.amount = 0.0f;
         network->fluid.fluid = nullptr;
     }
-    equalizeNetworkStorage(*network, pipes, tanks);
+    equalizeNetworkStorage(*network, context.fluidPipes, context.fluidTanks);
     return extracted;
 }
 
-float FluidSystem::insertIntoNetwork(Entity entity,
-                                     const FluidDefinition* fluid,
-                                     float amount,
-                                     ComponentStorage<FluidPipeComponent>& pipes,
-                                     ComponentStorage<FluidTankComponent>& tanks) {
+float FluidSystem::insertIntoNetwork(Entity entity, const FluidDefinition* fluid, float amount, FluidContext& context) {
     if (!fluid || amount <= 0.0f) {
         return 0.0f;
     }
@@ -391,7 +381,7 @@ float FluidSystem::insertIntoNetwork(Entity entity,
     const float inserted = std::min(amount, freeCapacity);
     network->fluid.fluid = fluid;
     network->fluid.amount += inserted;
-    equalizeNetworkStorage(*network, pipes, tanks);
+    equalizeNetworkStorage(*network, context.fluidPipes, context.fluidTanks);
     return inserted;
 }
 

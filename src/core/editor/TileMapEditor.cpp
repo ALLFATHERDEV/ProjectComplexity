@@ -48,7 +48,17 @@ void TileMapEditor::update(const SDL_Event &event, World& world, const Camera2D 
             }
 
             Sprite sprite = palette->atlas->getSprite(m_SelectedTileX, m_SelectedTileY);
-            world.getTileMap().setTile(tileX, tileY, sprite, m_SelectedLayer, palette->name, m_SelectedTileX, m_SelectedTileY, m_SelectedBlocking);
+            world.getTileMap().setTile(
+                tileX,
+                tileY,
+                sprite,
+                m_SelectedLayer,
+                palette->name,
+                m_SelectedTileX,
+                m_SelectedTileY,
+                m_SelectedBlocking,
+                &world.getTileAnimationDatabase()
+            );
         } else if (m_PlacementMode == PlacementMode::Conveyor) {
             world.placeConveyorBelt(tileX, tileY, m_SelectedConveyorDirection);
         } else if (m_PlacementMode == PlacementMode::FluidPipe) {

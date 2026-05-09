@@ -13,3 +13,5 @@ target_sources(ProjectComplexity PRIVATE
         TileMapGenerator.hpp
         AnimationLibrary.hpp
 )
+
+add_subdirectory(contexts)

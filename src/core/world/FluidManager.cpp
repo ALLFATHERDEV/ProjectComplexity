@@ -10,49 +10,11 @@
 constexpr PipeSpriteLayout kFluidSprites{};
 
 FluidManager::FluidManager(EntityManager& entityManager,
-                           ComponentStorage<PositionComponent>& positions,
-                           ComponentStorage<FluidPipeComponent>& fluidPipes,
-                           ComponentStorage<FluidTankComponent>& fluidTanks,
-                           ComponentStorage<FluidPumpComponent>& fluidPumps,
-                           ComponentStorage<FluidPortComponent>& fluidPorts,
-                           ComponentStorage<SpriteComponent>& sprites,
-                           ComponentStorage<VelocityComponent>& velocities,
-                           ComponentStorage<InputComponent>& inputs,
-                           ComponentStorage<CharacterStateComponent>& characterStates,
-                           ComponentStorage<AnimationControllerComponent>& animationControllers,
-                           ComponentStorage<CollisionComponent>& collisions,
-                           ComponentStorage<ConveyorBeltComponent>& conveyorBelts,
-                           ComponentStorage<InventoryComponent>& inventories,
-                           ComponentStorage<MachineFluidComponent>& machineFluids,
-                           ComponentStorage<MachineFluidPortLinkComponent>& machineFluidPortLinks,
-                           ComponentStorage<MachineComponent>& machines,
-                           ComponentStorage<MachineInventoryComponent>& machineInventories,
-                           ComponentStorage<CraftingMachineComponent>& craftingMachines,
-                           ComponentStorage<MinerComponent>& miners,
-                           ComponentStorage<InteractionComponent>& interactions,
+                           ComponentRegistry& components,
                            AnimationLibrary& animationLibrary,
                            FluidSystem& fluidSystem)
     : m_EntityManager(entityManager),
-      m_Positions(positions),
-      m_FluidPipes(fluidPipes),
-      m_FluidTanks(fluidTanks),
-      m_FluidPumps(fluidPumps),
-      m_FluidPorts(fluidPorts),
-      m_Sprites(sprites),
-      m_Velocities(velocities),
-      m_Inputs(inputs),
-      m_CharacterStates(characterStates),
-      m_AnimationControllers(animationControllers),
-      m_Collisions(collisions),
-      m_ConveyorBelts(conveyorBelts),
-      m_Inventories(inventories),
-      m_MachineFluids(machineFluids),
-      m_MachineFluidPortLinks(machineFluidPortLinks),
-      m_Machines(machines),
-      m_MachineInventories(machineInventories),
-      m_CraftingMachines(craftingMachines),
-      m_Miners(miners),
-      m_Interactions(interactions),
+      m_Components(components),
       m_AnimationLibrary(animationLibrary),
       m_FluidSystem(fluidSystem) {
 }
@@ -126,10 +88,10 @@ bool FluidManager::hasConnectableNeighbor(int tileX, int tileY, Direction direct
 }
 
 bool FluidManager::hasCompatiblePortAtTile(int tileX, int tileY, Direction direction) const {
-    const auto& portEntities = m_FluidPorts.getEntities();
+    const auto& portEntities = m_Components.m_FluidPorts.getEntities();
     for (Entity entity : portEntities) {
-        const PositionComponent* position = m_Positions.get(entity);
-        const FluidPortComponent* port = m_FluidPorts.get(entity);
+        const PositionComponent* position = m_Components.m_Positions.get(entity);
+        const FluidPortComponent* port = m_Components.m_FluidPorts.get(entity);
         if (!position || !port) {
             continue;
         }
@@ -256,8 +218,8 @@ Sprite FluidManager::getPumpSprite(Direction direction) const {
 
 void FluidManager::refreshFluidSpriteAt(int tileX, int tileY) {
     if (const Entity pipe = getFluidPipeAtTile(tileX, tileY); pipe != 0) {
-        FluidPipeComponent* pipeComponent = m_FluidPipes.get(pipe);
-        SpriteComponent* sprite = m_Sprites.get(pipe);
+        FluidPipeComponent* pipeComponent = m_Components.m_FluidPipes.get(pipe);
+        SpriteComponent* sprite = m_Components.m_Sprites.get(pipe);
         if (pipeComponent && sprite) {
             const bool hasVerticalOrientation = pipeComponent->direction == Direction::UP || pipeComponent->direction == Direction::DOWN;
             const bool connectUp = hasConnectableNeighbor(tileX, tileY, Direction::UP);
@@ -287,7 +249,7 @@ void FluidManager::refreshFluidSpriteAt(int tileX, int tileY) {
     }
 
     if (const Entity tank = getFluidTankAtTile(tileX, tileY); tank != 0) {
-        if (SpriteComponent* sprite = m_Sprites.get(tank)) {
+        if (SpriteComponent* sprite = m_Components.m_Sprites.get(tank)) {
             sprite->sprite = getTankSprite();
             sprite->renderWidth = kTileSize;
             sprite->renderHeight = kTileSize;
@@ -297,9 +259,9 @@ void FluidManager::refreshFluidSpriteAt(int tileX, int tileY) {
     }
 
     if (const Entity pump = getFluidPumpAtTile(tileX, tileY); pump != 0) {
-        if (SpriteComponent* sprite = m_Sprites.get(pump)) {
+        if (SpriteComponent* sprite = m_Components.m_Sprites.get(pump)) {
             Direction direction = Direction::RIGHT;
-            if (const FluidPortComponent* port = m_FluidPorts.get(pump)) {
+            if (const FluidPortComponent* port = m_Components.m_FluidPorts.get(pump)) {
                 direction = port->side;
             }
             sprite->sprite = getPumpSprite(direction);
@@ -327,7 +289,7 @@ void FluidManager::placeFluidPipe(int tileX, int tileY, Direction direction) {
         return;
     }
 
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts, m_MachineFluids, m_MachineFluidPortLinks, m_Machines, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Components, m_AnimationLibrary);
 
     FluidPipeComponent previewPipe;
     previewPipe.direction = direction;
@@ -354,9 +316,9 @@ void FluidManager::removeFluidPipe(int tileX, int tileY) {
     }
 
     const Entity pipe = it->second;
-    m_Positions.remove(pipe);
-    m_Sprites.remove(pipe);
-    m_FluidPipes.remove(pipe);
+    m_Components.m_Positions.remove(pipe);
+    m_Components.m_Sprites.remove(pipe);
+    m_Components.m_FluidPipes.remove(pipe);
     m_FluidPipeEntitiesByTile.erase(it);
     refreshFluidSpritesAround(tileX, tileY);
     m_FluidSystem.markNetworksDirty();
@@ -371,7 +333,7 @@ void FluidManager::placeFluidTank(int tileX, int tileY) {
         return;
     }
 
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts, m_MachineFluids, m_MachineFluidPortLinks, m_Machines, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Components, m_AnimationLibrary);
 
     const Entity tank = factory.createFluidTank(
         {static_cast<float>(tileX) * kTileSize, static_cast<float>(tileY) * kTileSize},
@@ -390,12 +352,12 @@ void FluidManager::removeFluidTank(int tileX, int tileY) {
     }
 
     const Entity tank = it->second;
-    m_Positions.remove(tank);
-    m_Sprites.remove(tank);
-    m_Collisions.remove(tank);
-    m_FluidTanks.remove(tank);
-    m_Interactions.remove(tank);
-    m_Machines.remove(tank);
+    m_Components.m_Positions.remove(tank);
+    m_Components.m_Sprites.remove(tank);
+    m_Components.m_Collisions.remove(tank);
+    m_Components.m_FluidTanks.remove(tank);
+    m_Components.m_Interactions.remove(tank);
+    m_Components.m_MachineEntities.remove(tank);
     m_FluidTankEntitiesByTile.erase(it);
     refreshFluidSpritesAround(tileX, tileY);
     m_FluidSystem.markNetworksDirty();
@@ -410,13 +372,13 @@ void FluidManager::placeFluidPump(int tileX, int tileY, Direction direction) {
         return;
     }
 
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts, m_MachineFluids, m_MachineFluidPortLinks, m_Machines, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Components, m_AnimationLibrary);
 
     const Entity pump = factory.createFluidPump(
         {static_cast<float>(tileX) * kTileSize, static_cast<float>(tileY) * kTileSize},
         getPumpSprite(direction),
         direction,
-        &m_DebugWater,
+        getDebugFluidDefinition(),
         100.0f
     );
     m_FluidPumpEntitiesByTile[makeTileKey(tileX, tileY)] = pump;
@@ -432,13 +394,13 @@ void FluidManager::removeFluidPump(int tileX, int tileY) {
     }
 
     const Entity pump = it->second;
-    m_Positions.remove(pump);
-    m_Sprites.remove(pump);
-    m_Collisions.remove(pump);
-    m_FluidPumps.remove(pump);
-    m_FluidPorts.remove(pump);
-    m_Interactions.remove(pump);
-    m_Machines.remove(pump);
+    m_Components.m_Positions.remove(pump);
+    m_Components.m_Sprites.remove(pump);
+    m_Components.m_Collisions.remove(pump);
+    m_Components.m_FluidPumps.remove(pump);
+    m_Components.m_FluidPorts.remove(pump);
+    m_Components.m_Interactions.remove(pump);
+    m_Components.m_MachineEntities.remove(pump);
     m_FluidPumpEntitiesByTile.erase(it);
     refreshFluidSpritesAround(tileX, tileY);
     m_FluidSystem.markNetworksDirty();
@@ -450,7 +412,7 @@ bool FluidManager::addDebugFluidToTank(int tileX, int tileY, float amount) {
         return false;
     }
 
-    FluidTankComponent* tankComponent = m_FluidTanks.get(tank);
+    FluidTankComponent* tankComponent = m_Components.m_FluidTanks.get(tank);
     if (!tankComponent) {
         return false;
     }
@@ -472,10 +434,10 @@ bool FluidManager::addDebugFluidToTank(int tileX, int tileY, float amount) {
 void FluidManager::renderDebug(Renderer& renderer, const Camera2D& camera, const ChunkManager& chunkManager) const {
     const float zoom = camera.getZoom();
 
-    const std::vector<Entity>& pipeEntities = m_FluidPipes.getEntities();
+    const std::vector<Entity>& pipeEntities = m_Components.m_FluidPipes.getEntities();
     for (Entity entity : pipeEntities) {
-        const PositionComponent* position = m_Positions.get(entity);
-        const FluidPipeComponent* pipe = m_FluidPipes.get(entity);
+        const PositionComponent* position = m_Components.m_Positions.get(entity);
+        const FluidPipeComponent* pipe = m_Components.m_FluidPipes.get(entity);
         if (!position || !pipe || !chunkManager.isWorldPositionLoaded(position->position.x, position->position.y, 32)) {
             continue;
         }
@@ -501,10 +463,10 @@ void FluidManager::renderDebug(Renderer& renderer, const Camera2D& camera, const
         renderer.drawFilledRect(fillRect, SDL_Color{90, 180, 255, 220});
     }
 
-    const std::vector<Entity>& tankEntities = m_FluidTanks.getEntities();
+    const std::vector<Entity>& tankEntities = m_Components.m_FluidTanks.getEntities();
     for (Entity entity : tankEntities) {
-        const PositionComponent* position = m_Positions.get(entity);
-        const FluidTankComponent* tank = m_FluidTanks.get(entity);
+        const PositionComponent* position = m_Components.m_Positions.get(entity);
+        const FluidTankComponent* tank = m_Components.m_FluidTanks.get(entity);
         if (!position || !tank || !chunkManager.isWorldPositionLoaded(position->position.x, position->position.y, 32)) {
             continue;
         }

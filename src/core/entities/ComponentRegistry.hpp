@@ -1,0 +1,49 @@
+#pragma once
+#include "ComponentStorage.hpp"
+#include "component/PositionComponent.hpp"
+#include "component/AnimatedSpriteComponent.hpp"
+#include "component/SpriteComponent.hpp"
+#include "component/CollisionComponent.hpp"
+#include "component/ConveyorBeltComponent.hpp"
+#include "component/ConveyorItemComponent.hpp"
+#include "component/CraftingMachineComponent.hpp"
+#include "component/FluidPipeComponent.hpp"
+#include "component/FluidPumpComponent.hpp"
+#include "component/FluidPortComponent.hpp"
+#include "component/FluidTankComponent.hpp"
+#include "component/InteractionComponent.hpp"
+#include "component/InventoryComponent.hpp"
+#include "component/MachineComponent.hpp"
+#include "component/MachineFluidComponent.hpp"
+#include "component/MachineFluidPortLinkComponent.hpp"
+#include "component/MachineInventoryComponent.hpp"
+#include "component/MinerComponent.hpp"
+#include "component/AnimationControllerComponent.hpp"
+#include "component/InputComponent.hpp"
+#include "component/VelocityComponent.hpp"
+
+struct ComponentRegistry {
+public:
+    ComponentStorage<PositionComponent> m_Positions;
+    ComponentStorage<SpriteComponent> m_Sprites;
+    ComponentStorage<AnimatedSpriteComponent> m_AnimatedSprites;
+    ComponentStorage<VelocityComponent> m_Velocities;
+    ComponentStorage<InputComponent> m_Inputs;
+    ComponentStorage<CharacterStateComponent> m_CharacterStates;
+    ComponentStorage<AnimationControllerComponent> m_AnimationControllers;
+    ComponentStorage<CollisionComponent> m_Collisions;
+    ComponentStorage<ConveyorBeltComponent> m_ConveyorBelts;
+    ComponentStorage<ConveyorItemComponent> m_ConveyorItems;
+    ComponentStorage<FluidPipeComponent> m_FluidPipes;
+    ComponentStorage<FluidTankComponent> m_FluidTanks;
+    ComponentStorage<FluidPumpComponent> m_FluidPumps;
+    ComponentStorage<FluidPortComponent> m_FluidPorts;
+    ComponentStorage<MachineFluidComponent> m_MachineFluids;
+    ComponentStorage<MachineFluidPortLinkComponent> m_MachineFluidPortLinks;
+    ComponentStorage<InventoryComponent> m_Inventories;
+    ComponentStorage<MachineComponent> m_MachineEntities;
+    ComponentStorage<MachineInventoryComponent> m_MachineInventories;
+    ComponentStorage<CraftingMachineComponent> m_CraftingMachines;
+    ComponentStorage<MinerComponent> m_Miners;
+    ComponentStorage<InteractionComponent> m_Interactions;
+};

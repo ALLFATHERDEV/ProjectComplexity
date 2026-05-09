@@ -4,13 +4,11 @@
 
 #include "../../Logger.hpp"
 
-void CraftingSystem::update(float deltaTime,
-                            ComponentStorage<CraftingMachineComponent>& machines,
-                            ComponentStorage<MachineInventoryComponent>& inventories,
-                            ComponentStorage<MachineFluidComponent>& machineFluids,
-                            const RecipeDatabase& recipeDatabase,
-                            const ItemDatabase& itemDatabase,
-                            const FluidDatabase& fluidDatabase) {
+void CraftingSystem::update(float deltaTime, CraftingContext& context, const RecipeDatabase& recipeDatabase, const ItemDatabase& itemDatabase, const FluidDatabase& fluidDatabase) {
+    auto& machines = context.craftingMachines;
+    auto& inventories = context.machineInventories;
+    auto& machineFluids = context.machineFluids;
+
     auto& machineArray = machines.getRaw();
     auto& entities = machines.getEntities();
 
@@ -59,13 +57,7 @@ bool CraftingSystem::syncRecipeInventoryLayout(MachineInventoryComponent& invent
     return true;
 }
 
-void CraftingSystem::processMachine(float deltaTime,
-                                    CraftingMachineComponent& machine,
-                                    MachineInventoryComponent& inventory,
-                                    MachineFluidComponent* machineFluid,
-                                    const RecipeDefinition& recipe,
-                                    const ItemDatabase& itemDatabase,
-                                    const FluidDatabase& fluidDatabase) {
+void CraftingSystem::processMachine(float deltaTime, CraftingMachineComponent& machine, MachineInventoryComponent& inventory, MachineFluidComponent* machineFluid, const RecipeDefinition& recipe, const ItemDatabase& itemDatabase, const FluidDatabase& fluidDatabase) {
     if (!hasIngredients(inventory, recipe, itemDatabase) ||
         !hasFluidIngredients(machineFluid, recipe, fluidDatabase)) {
         machine.progress = 0.0f;

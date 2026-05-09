@@ -6,4 +6,6 @@ target_sources(ProjectComplexity PRIVATE
         TileMap.hpp
         TileMapLayer.cpp
         TileMapLayer.hpp
+        TileAnimationDatabase.cpp
+        TileAnimationDatabase.hpp
 )

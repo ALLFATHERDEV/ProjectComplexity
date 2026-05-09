@@ -4,7 +4,7 @@
 #include <string>
 #include <fstream>
 #include <mutex>
-#include <fmt/core.h>
+#include <sstream>
 
 enum class LogLevel {
     Info,
@@ -19,12 +19,42 @@ public:
     static void shutdown();
 
     template<typename... Args>
-    static void log(LogLevel level, fmt::format_string<Args...> fmtStr, Args&&... args) {
-        std::string message = fmt::format(fmtStr, std::forward<Args>(args)...);
+    static void log(LogLevel level, const std::string& format, Args&&... args) {
+        std::string message = formatMessage(format, std::forward<Args>(args)...);
         write(level, message);
     }
 
 private:
+    template<typename T>
+    static std::string toString(T&& value) {
+        std::ostringstream stream;
+        stream << std::forward<T>(value);
+        return stream.str();
+    }
+
+    static void appendFormatted(std::string& output, const std::string& format);
+
+    template<typename T, typename... Args>
+    static void appendFormatted(std::string& output, const std::string& format, T&& value, Args&&... args) {
+        const std::size_t placeholder = format.find("{}");
+        if (placeholder == std::string::npos) {
+            output += format;
+            return;
+        }
+
+        output.append(format, 0, placeholder);
+        output += toString(std::forward<T>(value));
+        appendFormatted(output, format.substr(placeholder + 2), std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    static std::string formatMessage(const std::string& format, Args&&... args) {
+        std::string message;
+        message.reserve(format.size() + sizeof...(Args) * 8);
+        appendFormatted(message, format, std::forward<Args>(args)...);
+        return message;
+    }
+
     static void write(LogLevel level, const std::string& message);
     static std::string getTimestamp();
     static std::string levelToString(LogLevel level);

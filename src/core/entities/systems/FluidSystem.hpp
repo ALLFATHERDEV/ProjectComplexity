@@ -11,62 +11,34 @@
 #include "../component/FluidTankComponent.hpp"
 #include "../component/PositionComponent.hpp"
 
+struct FluidContext;
+
 class FluidSystem {
 public:
-    void update(float deltaTime,
-                ComponentStorage<PositionComponent>& positions,
-                ComponentStorage<FluidPipeComponent>& pipes,
-                ComponentStorage<FluidTankComponent>& tanks,
-                ComponentStorage<FluidPumpComponent>& pumps,
-                ComponentStorage<FluidPortComponent>& ports);
+    void update(float deltaTime, FluidContext& context);
 
     void markNetworksDirty();
-    void rebuildNetworks(ComponentStorage<PositionComponent>& positions,
-                         ComponentStorage<FluidPipeComponent>& pipes,
-                         ComponentStorage<FluidTankComponent>& tanks,
-                         ComponentStorage<FluidPortComponent>& ports);
+    void rebuildNetworks(FluidContext& context);
 
     const std::vector<FluidNetwork>& getNetworks() const;
     int getNetworkIdForEntity(Entity entity) const;
     const FluidDefinition* getNetworkFluidForEntity(Entity entity) const;
-    float extractFromNetwork(Entity entity,
-                             const FluidDefinition* fluid,
-                             float amount,
-                             ComponentStorage<FluidPipeComponent>& pipes,
-                             ComponentStorage<FluidTankComponent>& tanks);
-    float insertIntoNetwork(Entity entity,
-                            const FluidDefinition* fluid,
-                            float amount,
-                            ComponentStorage<FluidPipeComponent>& pipes,
-                            ComponentStorage<FluidTankComponent>& tanks);
+    float extractFromNetwork(Entity entity,const FluidDefinition* fluid,float amount,FluidContext& context);
+    float insertIntoNetwork(Entity entity,const FluidDefinition* fluid,float amount, FluidContext& context);
 
 private:
     static long long makeTileKey(int tileX, int tileY);
     static int worldToTile(float worldCoordinate);
     static Direction getOppositeDirection(Direction direction);
     static bool pipeHasConnection(const FluidPipeComponent& pipe, Direction direction);
+    bool arePipeNeighborsConnected(const FluidPipeComponent& pipeA,const FluidPipeComponent& pipeB,Direction dirFromAToB) const;
 
-    bool arePipeNeighborsConnected(const FluidPipeComponent& pipeA,
-                                   const FluidPipeComponent& pipeB,
-                                   Direction dirFromAToB) const;
-
-    void collectNetworkStorage(FluidNetwork& network,
-                               ComponentStorage<FluidPipeComponent>& pipes,
-                               ComponentStorage<FluidTankComponent>& tanks);
+    void collectNetworkStorage(FluidNetwork& network,ComponentStorage<FluidPipeComponent>& pipes,ComponentStorage<FluidTankComponent>& tanks);
     void refreshAllNetworkStorage(ComponentStorage<FluidPipeComponent>& pipes, ComponentStorage<FluidTankComponent>& tanks);
-    void processPumps(float deltaTime,
-                      ComponentStorage<FluidPumpComponent>& pumps,
-                      ComponentStorage<FluidPipeComponent>& pipes,
-                      ComponentStorage<FluidTankComponent>& tanks);
-    float fillNetworkTanks(FluidNetwork& network,
-                           const FluidDefinition* fluid,
-                           float amount,
-                           ComponentStorage<FluidTankComponent>& tanks);
-    void equalizeNetworkStorage(FluidNetwork& network,
-                                ComponentStorage<FluidPipeComponent>& pipes,
-                                ComponentStorage<FluidTankComponent>& tanks);
-    void equalizeAllNetworks(ComponentStorage<FluidPipeComponent>& pipes,
-                             ComponentStorage<FluidTankComponent>& tanks);
+    void processPumps(float deltaTime,ComponentStorage<FluidPumpComponent>& pumps,ComponentStorage<FluidPipeComponent>& pipes,ComponentStorage<FluidTankComponent>& tanks);
+    float fillNetworkTanks(FluidNetwork& network, const FluidDefinition* fluid,float amount,ComponentStorage<FluidTankComponent>& tanks);
+    void equalizeNetworkStorage(FluidNetwork& network,ComponentStorage<FluidPipeComponent>& pipes,ComponentStorage<FluidTankComponent>& tanks);
+    void equalizeAllNetworks(ComponentStorage<FluidPipeComponent>& pipes,ComponentStorage<FluidTankComponent>& tanks);
 
     std::vector<FluidNetwork> m_Networks;
     bool m_NetworksDirty = true;

@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "TileAnimationDatabase.hpp"
 #include "TileMapLayer.hpp"
 
 class ChunkManager;
@@ -12,7 +13,7 @@ public:
     void setCellSize(int cellWidth, int cellHeight);
     void addLayer(const TileMapLayer &layer);
     void render(Renderer* renderer, const Camera2D& camera, const ChunkManager& chunkManager);
-    void setTile(int x, int y, const Sprite &sprite, int layer, const std::string& paletteName, int atlasX, int atlasY, bool isBlocking = false);
+    void setTile(int x, int y, const Sprite &sprite, int layer, const std::string& paletteName, int atlasX, int atlasY, bool isBlocking = false, const TileAnimationDatabase* tileAnimationDatabase = nullptr);
     bool canPlaceTileObject(int x, int y, int layer, int widthTiles, int heightTiles) const;
     bool setTileObject(int x, int y, const Sprite& sprite, int layer, int widthTiles, int heightTiles, bool isBlocking, const std::string& itemName);
     void clearTile(int x, int y, int layer);

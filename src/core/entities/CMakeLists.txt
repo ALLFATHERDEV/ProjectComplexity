@@ -54,5 +54,6 @@ target_sources(ProjectComplexity PRIVATE
         component/MachineFluidPortLinkComponent.hpp
         systems/MachineFluidIOSystem.cpp
         systems/MachineFluidIOSystem.hpp
+        ComponentRegistry.hpp
 
 )

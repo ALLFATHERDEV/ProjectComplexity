@@ -11,18 +11,11 @@
 #include "../component/MachineFluidPortLinkComponent.hpp"
 #include "FluidSystem.hpp"
 
+struct MachineFluidIOContext;
+
 class MachineFluidIOSystem {
 public:
-    void update(float deltaTime,
-                ComponentStorage<MachineFluidPortLinkComponent>& portLinks,
-                ComponentStorage<FluidPortComponent>& ports,
-                ComponentStorage<CraftingMachineComponent>& craftingMachines,
-                ComponentStorage<MachineFluidComponent>& machineFluids,
-                ComponentStorage<FluidPipeComponent>& pipes,
-                ComponentStorage<FluidTankComponent>& tanks,
-                const RecipeDatabase& recipeDatabase,
-                const FluidDatabase& fluidDatabase,
-                FluidSystem& fluidSystem);
+    void update(float deltaTime, MachineFluidIOContext& context,  FluidContext& fluidContext, const RecipeDatabase& recipeDatabase, const FluidDatabase& fluidDatabase, FluidSystem& fluidSystem);
 
 private:
     MachineFluidSlot* findSlot(MachineFluidComponent& machineFluid, const MachineFluidPortLinkComponent& link) const;

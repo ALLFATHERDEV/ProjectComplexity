@@ -11,6 +11,11 @@
 std::ofstream Logger::s_LogFile;
 std::mutex Logger::s_Mutex;
 
+void Logger::appendFormatted(std::string& output, const std::string& format)
+{
+    output += format;
+}
+
 void Logger::init(const std::string& filename) {
     s_LogFile.open(filename);
 }

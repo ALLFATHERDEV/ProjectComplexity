@@ -16,9 +16,9 @@ void TileMap::render(Renderer *renderer, const Camera2D& camera, const ChunkMana
         layer.render(renderer, camera, chunkManager);
 }
 
-void TileMap::setTile(int x, int y, const Sprite &sprite, int layer, const std::string& paletteName, int atlasX, int atlasY, bool isBlocking) {
+void TileMap::setTile(int x, int y, const Sprite &sprite, int layer, const std::string& paletteName, int atlasX, int atlasY, bool isBlocking, const TileAnimationDatabase* tileAnimationDatabase) {
     TileMapLayer & mapLayer = m_Layers[layer];
-    mapLayer.setTile(x, y, sprite, paletteName, atlasX, atlasY, isBlocking);
+    mapLayer.setTile(x, y, sprite, paletteName, atlasX, atlasY, isBlocking, tileAnimationDatabase);
 }
 
 bool TileMap::canPlaceTileObject(int x, int y, int layer, int widthTiles, int heightTiles) const {

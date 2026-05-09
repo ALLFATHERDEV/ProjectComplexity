@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "TileAnimationDatabase.hpp"
 #include "../Logger.hpp"
 #include "../camera/Camera2D.hpp"
 #include "../graphics/Renderer.hpp"
@@ -59,12 +60,18 @@ void TileMapLayer::render(Renderer* renderer, const Camera2D& camera, const Chun
                 static_cast<float>(m_CellWidth * tile.widthTiles) * camera.getZoom(),
                 static_cast<float>(m_CellHeight * tile.heightTiles) * camera.getZoom()
             };
-            renderer->drawSprite(tile.sprite, dest);
+
+            const Sprite* spriteToDraw = &tile.sprite;
+            if (tile.animation && !tile.animation->frames.empty()) {
+                spriteToDraw = &tile.animation->frames[tile.animation->currentFrameIndex];
+            }
+
+            renderer->drawSprite(*spriteToDraw, dest);
         }
     }
 }
 
-void TileMapLayer::setTile(int x, int y, const Sprite &sprite, const std::string& paletteName, int atlasX, int atlasY, bool isBlocking) {
+void TileMapLayer::setTile(int x, int y, const Sprite &sprite, const std::string& paletteName, int atlasX, int atlasY, bool isBlocking, const TileAnimationDatabase* tileAnimationDatabase) {
     if (!isInBounds(x, y)) {
         LOG_WARN("Could not set tile on coords: {}/{}", x, y);
         return;
@@ -89,6 +96,7 @@ void TileMapLayer::setTile(int x, int y, const Sprite &sprite, const std::string
     tile.isPlaceableRoot = false;
     tile.shouldRender = true;
     tile.isBlocking = isBlocking;
+    tile.animation = tileAnimationDatabase ? tileAnimationDatabase->getAnimation(paletteName, atlasX, atlasY) : nullptr;
 }
 
 bool TileMapLayer::canPlaceTileObject(int x, int y, int widthTiles, int heightTiles) const {
@@ -131,6 +139,7 @@ bool TileMapLayer::setTileObject(int x, int y, const Sprite& sprite, int widthTi
             tile.rootX = x;
             tile.rootY = y;
             tile.sprite = Sprite{};
+            tile.animation = nullptr;
             tile.placeableItemName = itemName;
             tile.isOccupied = true;
             tile.isPlaceableRoot = false;
@@ -141,6 +150,7 @@ bool TileMapLayer::setTileObject(int x, int y, const Sprite& sprite, int widthTi
 
     Tile& root = m_Tiles[getTileIndex(x, y)];
     root.sprite = sprite;
+    root.animation = nullptr;
     root.widthTiles = widthTiles;
     root.heightTiles = heightTiles;
     root.placeableItemName = itemName;
@@ -183,7 +193,7 @@ void TileMapLayer::clearTile(int x, int y) {
 void TileMapLayer::fill(const Sprite &sprite, const std::string& paletteName, int atlasX, int atlasY) {
     for (int y = 0; y < m_Height; y++) {
         for (int x = 0; x < m_Width; x++) {
-            setTile(x, y, sprite, paletteName, atlasX, atlasY);
+            setTile(x, y, sprite, paletteName, atlasX, atlasY, false, nullptr);
         }
     }
 }
@@ -245,6 +255,7 @@ void TileMapLayer::clearTileInternal(int x, int y) {
     tile.rootX = x;
     tile.rootY = y;
     tile.sprite = Sprite{};
+    tile.animation = nullptr;
     tile.placeableItemName.clear();
     tile.isOccupied = false;
     tile.isPlaceableRoot = false;

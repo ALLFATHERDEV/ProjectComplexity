@@ -1,0 +1,14 @@
+{
+  "paletteName": "Overworld",
+  "frameTime": 0.2,
+  "sourceTileX": 1,
+  "sourceTileY": 4,
+  "frames": [
+    { "x": 1, "y": 4 },
+    { "x": 2, "y": 4 },
+    { "x": 0, "y": 4 },
+    { "x": 1, "y": 3 },
+    { "x": 2, "y": 3 },
+    { "x": 0, "y": 3 }
+  ]
+}

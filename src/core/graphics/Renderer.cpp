@@ -27,20 +27,39 @@ void Renderer::drawText(const std::string &text, float x, float y, SDL_Color col
     if (!m_Font || text.empty())
         return;
 
-    SDL_Surface* surface = TTF_RenderText_Blended(m_Font, text.c_str(), text.length(), color);
-    if (!surface)
-        return;
+    const std::string cacheKey = makeTextCacheKey(text, color);
+    auto it = m_TextCache.find(cacheKey);
+    if (it == m_TextCache.end()) {
+        SDL_Surface* surface = TTF_RenderText_Blended(m_Font, text.c_str(), text.length(), color);
+        if (!surface)
+            return;
 
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(m_Renderer, surface);
-    if (!texture) {
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(m_Renderer, surface);
+        if (!texture) {
+            SDL_DestroySurface(surface);
+            return;
+        }
+
+        CachedText cachedText;
+        cachedText.texture = texture;
+        cachedText.width = surface->w;
+        cachedText.height = surface->h;
         SDL_DestroySurface(surface);
-        return;
+
+        it = m_TextCache.emplace(cacheKey, cachedText).first;
     }
 
-    SDL_FRect destRect{x, y, static_cast<float>(surface->w), static_cast<float>(surface->h)};
-    SDL_RenderTexture(m_Renderer, texture, nullptr, &destRect);
-    SDL_DestroyTexture(texture);
-    SDL_DestroySurface(surface);
+
+    SDL_FRect destRect{x, y, static_cast<float>(it->second.width), static_cast<float>(it->second.height)};
+    SDL_RenderTexture(m_Renderer, it->second.texture, nullptr, &destRect);
+}
+
+std::string Renderer::makeTextCacheKey(const std::string &text, SDL_Color color) {
+    return text + "|" +
+               std::to_string(color.r) + "|" +
+               std::to_string(color.g) + "|" +
+               std::to_string(color.b) + "|" +
+               std::to_string(color.a);
 }
 
 SDL_Renderer *Renderer::getSDLRenderer() const {
@@ -49,6 +68,12 @@ SDL_Renderer *Renderer::getSDLRenderer() const {
 
 
 void Renderer::clearRenderer() const {
+
+    for (auto& [key, cachedText] : m_TextCache) {
+        if (cachedText.texture) {
+            SDL_DestroyTexture(cachedText.texture);
+        }
+    }
 
     if (m_Font) {
         TTF_CloseFont(m_Font);
@@ -59,17 +84,14 @@ void Renderer::clearRenderer() const {
 }
 
 void Renderer::draw(SDL_Texture *texture, SDL_FRect srcRect, SDL_FRect &destRect) const {
-    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
     SDL_RenderTexture(m_Renderer, texture, &srcRect, &destRect);
 }
 
 void Renderer::drawSprite(const Sprite &sprite, SDL_FRect& destRect) const {
-    SDL_SetTextureScaleMode(sprite.texture, SDL_SCALEMODE_NEAREST);
     SDL_RenderTexture(m_Renderer, sprite.texture, &sprite.srcRect, &destRect);
 }
 
 void Renderer::drawSpriteAlpha(const Sprite& sprite, SDL_FRect& destRect, Uint8 alpha) const {
-    SDL_SetTextureScaleMode(sprite.texture, SDL_SCALEMODE_NEAREST);
     SDL_SetTextureAlphaMod(sprite.texture, alpha);
     SDL_RenderTexture(m_Renderer, sprite.texture, &sprite.srcRect, &destRect);
     SDL_SetTextureAlphaMod(sprite.texture, 255);

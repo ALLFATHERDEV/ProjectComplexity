@@ -104,6 +104,7 @@ bool TileMetadataDatabase::loadFromFolder(const std::string& folderPath) {
             metadata.minedItemName = tileData.value("minedItemName", "");
             metadata.orePatchQuality = orePatchQualityFromString(tileData.value("orePatchQuality", "normal"));
             m_MetadataByTile[makeKey(paletteName, atlasX, atlasY)] = std::move(metadata);
+            LOG_INFO("Loaded tile metadata for tile {} from {}", makeKey(paletteName, atlasX, atlasY), entry.path().string());
         }
     }
 

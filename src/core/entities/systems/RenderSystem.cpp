@@ -9,14 +9,17 @@ void RenderSystem::render(Renderer *renderer, const Camera2D& camera, const Chun
     auto& spriteArray = sprites.getRaw();
     auto& entities = sprites.getEntities();
 
-    std::vector<size_t> drawOrder(spriteArray.size());
-    std::iota(drawOrder.begin(), drawOrder.end(), 0);
+    if (m_DrawOder.size() != spriteArray.size()) {
+        m_DrawOder.resize(spriteArray.size());
+    }
+    std::iota(m_DrawOder.begin(), m_DrawOder.end(), 0);
 
-    std::stable_sort(drawOrder.begin(), drawOrder.end(), [&](size_t a, size_t b) {
+
+    std::stable_sort(m_DrawOder.begin(), m_DrawOder.end(), [&](size_t a, size_t b) {
         return spriteArray[a].sortOrder < spriteArray[b].sortOrder;
     });
 
-    for (size_t index : drawOrder) {
+    for (size_t index : m_DrawOder) {
         Entity e = entities[index];
 
         auto* pos = positions.get(e);

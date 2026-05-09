@@ -1,26 +1,9 @@
 #pragma once
 
 #include "AnimationLibrary.hpp"
-#include "../entities/ComponentStorage.hpp"
+#include "../entities/ComponentRegistry.hpp"
 #include "../entities/EntityManager.hpp"
 #include "../entities/component/CollisionComponent.hpp"
-#include "../entities/component/ConveyorBeltComponent.hpp"
-#include "../entities/component/CraftingMachineComponent.hpp"
-#include "../entities/component/FluidPipeComponent.hpp"
-#include "../entities/component/FluidPortComponent.hpp"
-#include "../entities/component/FluidPumpComponent.hpp"
-#include "../entities/component/FluidTankComponent.hpp"
-#include "../entities/component/MachineFluidComponent.hpp"
-#include "../entities/component/MachineFluidPortLinkComponent.hpp"
-#include "../entities/component/InputComponent.hpp"
-#include "../entities/component/InteractionComponent.hpp"
-#include "../entities/component/InventoryComponent.hpp"
-#include "../entities/component/MachineComponent.hpp"
-#include "../entities/component/MachineInventoryComponent.hpp"
-#include "../entities/component/MinerComponent.hpp"
-#include "../entities/component/PositionComponent.hpp"
-#include "../entities/component/SpriteComponent.hpp"
-#include "../entities/component/VelocityComponent.hpp"
 #include "../graphics/SpriteAtlas.hpp"
 
 #include <tuple>
@@ -37,26 +20,7 @@ struct SpriteCoords {
 class ConveyorManager {
 public:
     ConveyorManager(EntityManager& entityManager,
-                    ComponentStorage<PositionComponent>& positions,
-                    ComponentStorage<SpriteComponent>& sprites,
-                    ComponentStorage<VelocityComponent>& velocities,
-                    ComponentStorage<InputComponent>& inputs,
-                    ComponentStorage<CharacterStateComponent>& characterStates,
-                    ComponentStorage<AnimationControllerComponent>& animationControllers,
-                    ComponentStorage<CollisionComponent>& collisions,
-                    ComponentStorage<ConveyorBeltComponent>& conveyorBelts,
-                    ComponentStorage<InventoryComponent>& inventories,
-                    ComponentStorage<FluidPipeComponent>& fluidPipes,
-                    ComponentStorage<FluidTankComponent>& fluidTanks,
-                    ComponentStorage<FluidPumpComponent>& fluidPumps,
-                    ComponentStorage<FluidPortComponent>& fluidPorts,
-                    ComponentStorage<MachineFluidComponent>& machineFluids,
-                    ComponentStorage<MachineFluidPortLinkComponent>& machineFluidPortLinks,
-                    ComponentStorage<MachineComponent>& machines,
-                    ComponentStorage<MachineInventoryComponent>& machineInventories,
-                    ComponentStorage<CraftingMachineComponent>& craftingMachines,
-                    ComponentStorage<MinerComponent>& miners,
-                    ComponentStorage<InteractionComponent>& interactions,
+                    ComponentRegistry& components,
                     AnimationLibrary& animationLibrary);
 
     void setAtlas(SpriteAtlas* atlas);
@@ -75,26 +39,7 @@ private:
     SpriteCoords getCurveConveyorSprite(Direction incomingSide, Direction outgoingDirection);
 
     EntityManager& m_EntityManager;
-    ComponentStorage<PositionComponent>& m_Positions;
-    ComponentStorage<SpriteComponent>& m_Sprites;
-    ComponentStorage<VelocityComponent>& m_Velocities;
-    ComponentStorage<InputComponent>& m_Inputs;
-    ComponentStorage<CharacterStateComponent>& m_CharacterStates;
-    ComponentStorage<AnimationControllerComponent>& m_AnimationControllers;
-    ComponentStorage<CollisionComponent>& m_Collisions;
-    ComponentStorage<ConveyorBeltComponent>& m_ConveyorBelts;
-    ComponentStorage<InventoryComponent>& m_Inventories;
-    ComponentStorage<FluidPipeComponent>& m_FluidPipes;
-    ComponentStorage<FluidTankComponent>& m_FluidTanks;
-    ComponentStorage<FluidPumpComponent>& m_FluidPumps;
-    ComponentStorage<FluidPortComponent>& m_FluidPorts;
-    ComponentStorage<MachineFluidComponent>& m_MachineFluids;
-    ComponentStorage<MachineFluidPortLinkComponent>& m_MachineFluidPortLinks;
-    ComponentStorage<MachineComponent>& m_Machines;
-    ComponentStorage<MachineInventoryComponent>& m_MachineInventories;
-    ComponentStorage<CraftingMachineComponent>& m_CraftingMachines;
-    ComponentStorage<MinerComponent>& m_Miners;
-    ComponentStorage<InteractionComponent>& m_Interactions;
+    ComponentRegistry& m_Components;
     AnimationLibrary& m_AnimationLibrary;
     SpriteAtlas* m_ConveyorAtlas = nullptr;
     std::unordered_map<long long, Entity> m_ConveyorEntitiesByTile;

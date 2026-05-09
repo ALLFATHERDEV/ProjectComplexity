@@ -2,16 +2,14 @@
 
 #include <algorithm>
 
-void MachineFluidIOSystem::update(float deltaTime,
-                                  ComponentStorage<MachineFluidPortLinkComponent>& portLinks,
-                                  ComponentStorage<FluidPortComponent>& ports,
-                                  ComponentStorage<CraftingMachineComponent>& craftingMachines,
-                                  ComponentStorage<MachineFluidComponent>& machineFluids,
-                                  ComponentStorage<FluidPipeComponent>& pipes,
-                                  ComponentStorage<FluidTankComponent>& tanks,
-                                  const RecipeDatabase& recipeDatabase,
-                                  const FluidDatabase& fluidDatabase,
-                                  FluidSystem& fluidSystem) {
+#include "../../world/contexts/MachineFluidIOContext.hpp"
+
+void MachineFluidIOSystem::update(float deltaTime, MachineFluidIOContext& context, FluidContext& fluidContext, const RecipeDatabase& recipeDatabase, const FluidDatabase& fluidDatabase, FluidSystem& fluidSystem) {
+    auto& portLinks = context.machineFluidPortLinks;
+    auto& craftingMachines = context.craftingMachines;
+    auto& ports = context.fluidPorts;
+    auto& machineFluids = context.machineFluids;
+
     auto& linkArray = portLinks.getRaw();
     auto& entities = portLinks.getEntities();
 
@@ -59,11 +57,7 @@ void MachineFluidIOSystem::update(float deltaTime,
                 continue;
             }
 
-            const float extracted = fluidSystem.extractFromNetwork(portEntity,
-                                                                   networkFluid,
-                                                                   std::min(freeCapacity, transferLimit),
-                                                                   pipes,
-                                                                   tanks);
+            const float extracted = fluidSystem.extractFromNetwork(portEntity, networkFluid, std::min(freeCapacity, transferLimit), fluidContext);
             if (extracted <= 0.0f) {
                 continue;
             }
@@ -78,11 +72,7 @@ void MachineFluidIOSystem::update(float deltaTime,
                 continue;
             }
 
-            const float inserted = fluidSystem.insertIntoNetwork(portEntity,
-                                                                 slot->storage.fluid,
-                                                                 std::min(slot->storage.amount, transferLimit),
-                                                                 pipes,
-                                                                 tanks);
+            const float inserted = fluidSystem.insertIntoNetwork(portEntity, slot->storage.fluid,std::min(slot->storage.amount, transferLimit),fluidContext);
             if (inserted <= 0.0f) {
                 continue;
             }

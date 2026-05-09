@@ -207,7 +207,8 @@ bool TileMapSerializer::load(World& world, const std::string &filePath) {
                 paletteName,
                 atlasX,
                 atlasY,
-                blockingInt != 0
+                blockingInt != 0,
+                &world.getTileAnimationDatabase()
             );
         }
         else if (type == "CONVEYOR")

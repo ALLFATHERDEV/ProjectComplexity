@@ -1,6 +1,7 @@
-#ifndef PROJECTCOMPLEXITY_TILE_H
-#define PROJECTCOMPLEXITY_TILE_H
+#pragma once
 #include <string>
+
+struct TileAnimationDefinition;
 
 #include "../graphics/Sprite.hpp"
 
@@ -24,6 +25,6 @@ struct Tile {
     bool isPlaceableRoot = false;
     bool shouldRender = false;
     bool isBlocking = false;
-};
 
-#endif //PROJECTCOMPLEXITY_TILE_H
+    const TileAnimationDefinition* animation = nullptr;
+};

@@ -5,6 +5,7 @@
 #include "../component/PositionComponent.hpp"
 #include "../component/SpriteComponent.hpp"
 #include "../../graphics/Renderer.hpp"
+#include <vector>
 
 class RenderSystem {
 public:
@@ -13,4 +14,8 @@ public:
 private:
     int m_CellWidth = 32;
     int m_CellHeight = 32;
+
+    std::vector<size_t> m_DrawOder;
+    size_t m_LastSpriteCount = 0;
+    bool m_DrawOrderDirty = true;
 };

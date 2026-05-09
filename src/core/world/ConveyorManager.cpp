@@ -69,48 +69,10 @@ SpriteCoords ConveyorManager::getCurveConveyorSprite(Direction incomingSide, Dir
 }
 
 ConveyorManager::ConveyorManager(EntityManager& entityManager,
-                                 ComponentStorage<PositionComponent>& positions,
-                                 ComponentStorage<SpriteComponent>& sprites,
-                                 ComponentStorage<VelocityComponent>& velocities,
-                                 ComponentStorage<InputComponent>& inputs,
-                                 ComponentStorage<CharacterStateComponent>& characterStates,
-                                 ComponentStorage<AnimationControllerComponent>& animationControllers,
-                                 ComponentStorage<CollisionComponent>& collisions,
-                                 ComponentStorage<ConveyorBeltComponent>& conveyorBelts,
-                                 ComponentStorage<InventoryComponent>& inventories,
-                                 ComponentStorage<FluidPipeComponent>& fluidPipes,
-                                 ComponentStorage<FluidTankComponent>& fluidTanks,
-                                 ComponentStorage<FluidPumpComponent>& fluidPumps,
-                                 ComponentStorage<FluidPortComponent>& fluidPorts,
-                                 ComponentStorage<MachineFluidComponent>& machineFluids,
-                                 ComponentStorage<MachineFluidPortLinkComponent>& machineFluidPortLinks,
-                                 ComponentStorage<MachineComponent>& machines,
-                                 ComponentStorage<MachineInventoryComponent>& machineInventories,
-                                 ComponentStorage<CraftingMachineComponent>& craftingMachines,
-                                 ComponentStorage<MinerComponent>& miners,
-                                 ComponentStorage<InteractionComponent>& interactions,
+                                 ComponentRegistry& components,
                                  AnimationLibrary& animationLibrary)
     : m_EntityManager(entityManager),
-      m_Positions(positions),
-      m_Sprites(sprites),
-      m_Velocities(velocities),
-      m_Inputs(inputs),
-      m_CharacterStates(characterStates),
-      m_AnimationControllers(animationControllers),
-      m_Collisions(collisions),
-      m_ConveyorBelts(conveyorBelts),
-      m_Inventories(inventories),
-      m_FluidPipes(fluidPipes),
-      m_FluidTanks(fluidTanks),
-      m_FluidPumps(fluidPumps),
-      m_FluidPorts(fluidPorts),
-      m_MachineFluids(machineFluids),
-      m_MachineFluidPortLinks(machineFluidPortLinks),
-      m_Machines(machines),
-      m_MachineInventories(machineInventories),
-      m_CraftingMachines(craftingMachines),
-      m_Miners(miners),
-      m_Interactions(interactions),
+      m_Components(components),
       m_AnimationLibrary(animationLibrary) {
 }
 
@@ -143,9 +105,9 @@ void ConveyorManager::refreshConveyorSpriteAt(int tileX, int tileY) {
         return;
     }
 
-    auto* belt = m_ConveyorBelts.get(beltEntity);
-    auto* sprite = m_Sprites.get(beltEntity);
-    auto* animationController = m_AnimationControllers.get(beltEntity);
+    auto* belt = m_Components.m_ConveyorBelts.get(beltEntity);
+    auto* sprite = m_Components.m_Sprites.get(beltEntity);
+    auto* animationController = m_Components.m_AnimationControllers.get(beltEntity);
     if (!belt) {
         return;
     }
@@ -164,7 +126,7 @@ void ConveyorManager::refreshConveyorSpriteAt(int tileX, int tileY) {
             continue;
         }
 
-        const auto* neighborBelt = m_ConveyorBelts.get(neighborEntity);
+        const auto* neighborBelt = m_Components.m_ConveyorBelts.get(neighborEntity);
         if (!neighborBelt) {
             continue;
         }
@@ -233,7 +195,7 @@ void ConveyorManager::placeConveyorBelt(int tileX, int tileY, Direction directio
 
     removeConveyorBelt(tileX, tileY);
 
-    EntityFactory factory(m_EntityManager, m_Positions, m_Velocities, m_Inputs, m_CharacterStates, m_AnimationControllers, m_Sprites, m_Collisions, m_ConveyorBelts, m_Inventories, m_FluidPipes, m_FluidTanks, m_FluidPumps, m_FluidPorts, m_MachineFluids, m_MachineFluidPortLinks, m_Machines, m_MachineInventories, m_CraftingMachines, m_Miners, m_Interactions, m_AnimationLibrary);
+    EntityFactory factory(m_EntityManager, m_Components, m_AnimationLibrary);
 
     const float worldX = static_cast<float>(tileX) * kTileSize;
     const float worldY = static_cast<float>(tileY) * kTileSize;
@@ -250,12 +212,12 @@ void ConveyorManager::removeConveyorBelt(int tileX, int tileY) {
     }
 
     const Entity belt = it->second;
-    m_Positions.remove(belt);
-    m_Sprites.remove(belt);
-    m_AnimationControllers.remove(belt);
-    m_ConveyorBelts.remove(belt);
-    m_Collisions.remove(belt);
-    m_Interactions.remove(belt);
+    m_Components.m_Positions.remove(belt);
+    m_Components.m_Sprites.remove(belt);
+    m_Components.m_AnimationControllers.remove(belt);
+    m_Components.m_ConveyorBelts.remove(belt);
+    m_Components.m_Collisions.remove(belt);
+    m_Components.m_Interactions.remove(belt);
     m_ConveyorEntitiesByTile.erase(it);
     refreshConveyorSpritesAround(tileX, tileY);
 }
@@ -280,7 +242,7 @@ std::vector<std::tuple<int, int, Direction>> ConveyorManager::getConveyorBeltDat
     conveyors.reserve(m_ConveyorEntitiesByTile.size());
 
     for (const auto& [tileKey, entity] : m_ConveyorEntitiesByTile) {
-        const auto* belt = m_ConveyorBelts.get(entity);
+        const auto* belt = m_Components.m_ConveyorBelts.get(entity);
         if (!belt) {
             continue;
         }
