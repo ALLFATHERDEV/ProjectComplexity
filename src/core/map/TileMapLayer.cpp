@@ -8,6 +8,10 @@
 #include "../graphics/Renderer.hpp"
 #include "../world/ChunkManager.hpp"
 
+namespace {
+    constexpr int kTileMapSortLayer = -1000;
+}
+
 int TileMapLayer::getTileIndex(int x, int y) const {
     return y * m_Width + x;
 }
@@ -66,7 +70,7 @@ void TileMapLayer::render(Renderer* renderer, const Camera2D& camera, const Chun
                 spriteToDraw = &tile.animation->frames[tile.animation->currentFrameIndex];
             }
 
-            renderer->drawSprite(*spriteToDraw, dest);
+            renderer->queueSprite(*spriteToDraw, dest, kTileMapSortLayer);
         }
     }
 }

@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <numeric>
 
+namespace {
+    constexpr int kWorldSpriteSortLayerBase = 0;
+}
+
 
 void RenderSystem::render(Renderer *renderer, const Camera2D& camera, const ChunkManager& chunkManager, ComponentStorage<PositionComponent> &positions, ComponentStorage<SpriteComponent> &sprites) {
     auto& spriteArray = sprites.getRaw();
@@ -41,6 +45,6 @@ void RenderSystem::render(Renderer *renderer, const Camera2D& camera, const Chun
         destRect.w = renderWidth * zoom;
         destRect.h = renderHeight * zoom;
 
-        renderer->drawSprite(sprite, destRect);
+        renderer->queueSprite(sprite, destRect, kWorldSpriteSortLayerBase + spriteArray[index].sortOrder);
     }
 }

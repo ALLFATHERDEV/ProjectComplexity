@@ -54,9 +54,9 @@ void AnimatedSprite::reset() {
 }
 
 
-void AnimatedSprite::render(Renderer* renderer, SDL_FRect destRect) {
+void AnimatedSprite::render(Renderer* renderer, SDL_FRect destRect, int sortLayer) {
     if (m_IsPlaying) {
-        renderer->drawSprite(m_Sprites[m_CurrentFrame], destRect);
+        renderer->queueSprite(m_Sprites[m_CurrentFrame], destRect, sortLayer);
     }
 }
 

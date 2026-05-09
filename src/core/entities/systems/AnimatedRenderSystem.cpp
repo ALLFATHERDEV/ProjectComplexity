@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <numeric>
 
+namespace {
+    constexpr int kAnimatedSpriteSortLayerBase = 1000;
+}
+
 std::vector<size_t> AnimatedRenderSystem::m_DrawOder;
 size_t AnimatedRenderSystem::m_LastSpriteCount = 0;
 bool AnimatedRenderSystem::m_DrawOrderDirty = 0;
@@ -44,6 +48,6 @@ void AnimatedRenderSystem::render(Renderer* renderer, const Camera2D& camera, co
         destRect.w = renderWidth * zoom;
         destRect.h = renderHeight * zoom;
 
-        currentAnimation->render(renderer, destRect);
+        currentAnimation->render(renderer, destRect, kAnimatedSpriteSortLayerBase + controller.sortOrder);
     }
 }

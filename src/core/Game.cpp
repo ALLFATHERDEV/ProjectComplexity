@@ -178,6 +178,7 @@ void Game::render() {
 
     renderDraggedPlaceablePreview();
     m_GUISystem.render(&m_Renderer);
+    m_Renderer.flushSpriteQueue();
 
     m_TileMapEditor.renderImGui(m_World);
     m_ItemDebugEditor.renderImGui(m_World);
@@ -274,6 +275,8 @@ void Game::renderDebugOverlay() {
     const int chunkY = chunkManager.getCenterChunkY();
     const float zoom = m_World.getCamera().getZoom();
     const std::vector<FluidNetwork>& fluidNetworks = m_World.getFluidSystem().getNetworks();
+    const size_t queuedSprites = m_Renderer.getLastQueuedSpriteCount();
+    const size_t textureSwitches = m_Renderer.getLastTextureSwitchCount();
 
     constexpr ImGuiWindowFlags windowFlags =
         ImGuiWindowFlags_NoDecoration |
@@ -297,6 +300,8 @@ void Game::renderDebugOverlay() {
         ImGui::Text("Chunk: %d, %d", chunkX, chunkY);
         ImGui::Text("Zoom: %.2f", zoom);
         ImGui::Text("Hovered Entity: %d", m_World.getHoveredMachine(mouseWorldPosition.x, mouseWorldPosition.y));
+        ImGui::Text("Queued Sprites: %d", static_cast<int>(queuedSprites));
+        ImGui::Text("Texture Switches: %d", static_cast<int>(textureSwitches));
         ImGui::Text("Fluid Networks: %d", static_cast<int>(fluidNetworks.size()));
         for (const FluidNetwork& network : fluidNetworks) {
             ImGui::Text("Net %d P:%d T:%d Cap:%.0f Amt:%.0f %s",

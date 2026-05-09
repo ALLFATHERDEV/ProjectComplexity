@@ -13,7 +13,7 @@ public:
 
     void play();
     void stop();
-    void render(Renderer* renderer, SDL_FRect destRect);
+    void render(Renderer* renderer, SDL_FRect destRect, int sortLayer = 0);
     void update(float deltaTime);
     void reset();
     bool isPlaying() { return m_IsPlaying; }
