@@ -40,6 +40,7 @@ private:
     TileMapEditor m_TileMapEditor;
     ItemDebugEditor m_ItemDebugEditor;
     Direction m_SelectedPlaceableDirection = Direction::RIGHT;
+    bool m_ShowDebugOverlay = false;
 
     float m_DebugFps = 0.0f;
     float m_DebugFpsAccumulator = 0.0f;

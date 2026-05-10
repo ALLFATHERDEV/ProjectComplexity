@@ -24,6 +24,7 @@
 #include "../entities/systems/MovementSystem.hpp"
 #include "../entities/systems/MiningSystem.hpp"
 #include "../entities/systems/RenderSystem.hpp"
+#include "../entities/systems/RobotSystem.hpp"
 #include "../graphics/Renderer.hpp"
 #include "../graphics/SpriteAtlas.hpp"
 #include "../fluid/FluidDatabase.hpp"
@@ -32,6 +33,7 @@
 #include "../map/TileAnimationDatabase.hpp"
 #include "../map/TileMetadataDatabase.hpp"
 #include "../map/TileMap.hpp"
+#include "../robot/RobotTaskBoard.hpp"
 #include "contexts/FluidContext.hpp"
 #include "contexts/MachineFluidIOContext.hpp"
 
@@ -76,11 +78,16 @@ public:
     ComponentStorage<FluidPumpComponent>& getFluidPumps() { return m_Components.m_FluidPumps; }
     ComponentStorage<FluidPortComponent>& getFluidPorts() { return m_Components.m_FluidPorts; }
     ComponentStorage<MachineFluidComponent>& getMachineFluids() { return m_Components.m_MachineFluids; }
+    ComponentStorage<RobotComponent>& getRobots() { return m_Components.m_Robots; }
+    ComponentStorage<RobotBrainComponent>& getRobotBrains() { return m_Components.m_RobotBrains; }
+    ComponentStorage<RobotCarryComponent>& getRobotCarries() { return m_Components.m_RobotCarries; }
     FluidSystem& getFluidSystem() { return m_FluidSystem; }
     const FluidSystem& getFluidSystem() const { return m_FluidSystem; }
     const RecipeDatabase& getRecipeDatabase() const { return m_RecipeDatabase; }
     const FluidDatabase& getFluidDatabase() const { return m_FluidDatabase; }
     const TileAnimationDatabase& getTileAnimationDatabase() const { return m_TileAnimationDatabase; }
+    RobotTaskBoard& getRobotTaskBoard() { return m_RobotTaskBoard; }
+    const RobotTaskBoard& getRobotTaskBoard() const { return m_RobotTaskBoard; }
     Entity getPlayer() const { return m_Player; }
     Vec2f getPlayerPosition() const;
     bool canPlaceItem(const ItemDefinition& item, int tileX, int tileY) const;
@@ -108,6 +115,7 @@ private:
     bool satisfiesMachinePlacementCondition(const MachineDefinition& machineDefinition, int tileX, int tileY) const;
     Sprite getMachineSprite(const MachineDefinition& machineDefinition) const;
     void registerTilePalette(const std::string& name, SpriteAtlas* atlas);
+    const char* goapActionTypeToString(GoapActionType action);
 
     Camera2D m_Camera;
     Entity m_Player;
@@ -140,6 +148,9 @@ private:
     CraftingContext m_CraftingContext;
     MachineFluidIOContext m_MachineFluidIOContext;
     FluidContext m_FluidContext;
+    RobotSystemContext m_RobotSystemContext;
+
+    RobotTaskBoard m_RobotTaskBoard;
 
     AnimatedSprite m_AnimSpr;
     AnimatedSpriteComponent m_Comp;
@@ -158,6 +169,8 @@ private:
     FluidManager m_FluidManager;
     MiningSystem m_MiningSystem;
     InteractionSystem m_InteractionSystem;
+    RobotSystem m_RobotSystem;
+
 
 };
 

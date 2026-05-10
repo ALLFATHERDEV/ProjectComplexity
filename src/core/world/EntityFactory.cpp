@@ -293,3 +293,28 @@ Entity EntityFactory::createFluidPump(Vec2f position, Sprite sprite, Direction o
     m_Components.m_FluidPorts.add(pump, { FluidPortType::OUTPUT, outputDirection, outputPerSecond });
     return pump;
 }
+
+Entity EntityFactory::createHaulerBot(Vec2f position, Sprite sprite) const {
+    Entity robot = m_EntityManager.createEntity();
+
+    m_Components.m_Positions.add(robot, { position });
+    m_Components.m_Sprites.add(robot, { sprite, 0, 32.0f, 32.0f, false, true });
+    m_Components.m_Collisions.add(robot, { SDL_FRect(4.0f, 4.0f, 24.0f, 24.0f), true, false } );
+
+    RobotComponent robotComponent;
+    robotComponent.robotType = "hauler";
+    robotComponent.moveSpeed = 90.0f;
+    robotComponent.interactionRange = 20.0f;
+    robotComponent.carryCapacity = 1;
+    m_Components.m_Robots.add(robot, robotComponent);
+
+    RobotBrainComponent brain;
+    brain.planDirty = true;
+    brain.currentGoal = "";
+    m_Components.m_RobotBrains.add(robot, brain);
+
+    RobotCarryComponent carry;
+    m_Components.m_RobotCarries.add(robot, carry);
+
+    return robot;
+}

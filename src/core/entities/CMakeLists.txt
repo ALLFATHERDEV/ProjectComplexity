@@ -1,59 +1,9 @@
 target_sources(ProjectComplexity PRIVATE
         Entity.hpp
         EntityManager.hpp
-        component/PositionComponent.hpp
-        component/SpriteComponent.hpp
-        component/AnimatedSpriteComponent.hpp
         ComponentStorage.hpp
-        systems/RenderSystem.cpp
-        systems/RenderSystem.hpp
-        systems/AnimationSystem.cpp
-        systems/AnimationSystem.hpp
-        systems/AnimatedRenderSystem.cpp
-        systems/AnimatedRenderSystem.hpp
-        component/VelocityComponent.hpp
-        systems/MovementSystem.cpp
-        systems/MovementSystem.hpp
-        component/InputComponent.hpp
-        systems/InputSystem.cpp
-        systems/InputSystem.hpp
-        systems/MovementInputSystem.cpp
-        systems/MovementInputSystem.hpp
-        component/CharacterStateComponent.hpp
-        component/AnimationControllerComponent.hpp
-        systems/CharacterStateSystem.cpp
-        systems/CharacterStateSystem.hpp
-        systems/AnimationStateSystem.cpp
-        systems/AnimationStateSystem.hpp
-        component/CollisionComponent.hpp
-        systems/CollisionSystem.cpp
-        systems/CollisionSystem.hpp
-        component/InventoryComponent.hpp
-        component/MachineComponent.hpp
-        component/MachineInventoryComponent.hpp
-        component/CraftingMachineComponent.hpp
-        component/MinerComponent.hpp
-        component/ConveyorBeltComponent.hpp
-        component/ConveyorItemComponent.hpp
-        systems/CraftingSystem.cpp
-        systems/CraftingSystem.hpp
-        systems/MiningSystem.cpp
-        systems/MiningSystem.hpp
-        systems/ConveyorSystem.cpp
-        systems/ConveyorSystem.hpp
-        component/InteractionComponent.hpp
-        systems/InteractionSystem.cpp
-        systems/InteractionSystem.hpp
-        component/FluidPipeComponent.hpp
-        component/FluidTankComponent.hpp
-        component/FluidPortComponent.hpp
-        component/FluidPumpComponent.hpp
-        systems/FluidSystem.cpp
-        systems/FluidSystem.hpp
-        component/MachineFluidComponent.hpp
-        component/MachineFluidPortLinkComponent.hpp
-        systems/MachineFluidIOSystem.cpp
-        systems/MachineFluidIOSystem.hpp
         ComponentRegistry.hpp
-
 )
+
+add_subdirectory(component)
+add_subdirectory(systems)

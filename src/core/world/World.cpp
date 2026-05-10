@@ -10,6 +10,8 @@
 #include "../entities/systems/AnimatedRenderSystem.hpp"
 #include "../graphics/AnimationLoader.hpp"
 #include "../graphics/SpriteAtlas.hpp"
+#include "../robot/goap/GoapPlanner.hpp"
+#include "../robot/goap/GoapState.hpp"
 
 namespace {
     SpriteCoords getStraightConveyorPreviewCoords(Direction direction) {
@@ -32,6 +34,7 @@ World::World()
         m_CraftingContext(m_Components.m_CraftingMachines, m_Components.m_MachineInventories, m_Components.m_MachineFluids),
         m_MachineFluidIOContext(m_Components.m_MachineFluidPortLinks, m_Components.m_FluidPorts, m_Components.m_CraftingMachines, m_Components.m_MachineFluids, m_Components.m_FluidPipes, m_Components.m_FluidTanks),
         m_FluidContext(m_Components.m_Positions, m_Components.m_FluidPipes, m_Components.m_FluidTanks, m_Components.m_FluidPumps, m_Components.m_FluidPorts),
+        m_RobotSystemContext(m_Components.m_Robots, m_Components.m_RobotBrains, m_Components.m_RobotCarries, m_Components.m_Positions, m_Components.m_Inventories),
         m_FluidManager(m_EntityManager, m_Components, m_AnimationLibrary, m_FluidSystem) {
 
 }
@@ -52,6 +55,7 @@ void World::update(float deltaTime) {
     m_CraftingSystem.update(deltaTime, m_CraftingContext, m_RecipeDatabase, m_ItemDatabase, m_FluidDatabase);
     m_MiningSystem.update(deltaTime, m_Components.m_Miners, m_Components.m_Positions, m_Components.m_MachineInventories, m_TileMap, m_TileMetadataDatabase, m_ItemDatabase);
     m_ConveyorSystem.update(deltaTime, m_EntityManager, m_Player, m_Components.m_Positions, m_Components.m_Sprites, m_Components.m_ConveyorBelts, m_Components.m_ConveyorItems, m_Components.m_Inventories, m_Components.m_MachineInventories);
+    m_RobotSystem.update(deltaTime, m_RobotSystemContext, m_RobotTaskBoard);
 
     if (const auto* playerPos = m_Components.m_Positions.get(m_Player)) {
         m_ChunkManager.update(playerPos->position, 32);
@@ -112,6 +116,16 @@ void World::registerTilePalette(const std::string& name, SpriteAtlas* atlas) {
     }
 
     m_TilePalettes.push_back({name, atlas});
+}
+
+const char * World::goapActionTypeToString(GoapActionType action) {
+    switch (action) {
+        case GoapActionType::MOVE_TO_PICKUP: return "MoveToPickup";
+        case GoapActionType::PICKUP_ITEM: return "PickUpItem";
+        case GoapActionType::MOVE_TO_DROPOFF: return "MoveToDropoff";
+        case GoapActionType::DROP_OFF_ITEM: return "DropOffItem";
+        default: return "Unknown";
+    }
 }
 
 SpriteAtlas* World::getTilePalette(const std::string& name) const {
@@ -702,10 +716,38 @@ void World::initializeWorld() {
     registerTilePalette("Fluid", &m_FluidAtlas);
     registerTilePalette("Ore Veins", &m_OreVeinsAtlas);
     m_TileAnimationDatabase.loadFromFolder("assets/tile_animations", [this](const std::string& paletteName) { return getTilePalette(paletteName); });
-    // TileMapSerializer::load(*this, "maps/test.map");
+    TileMapSerializer::load(*this, "maps/test.map");
 
-    TileMapGenerator::Config mapGeneratorConfig;
-    TileMapGenerator::generateTerrain(m_TileMap, m_TileMapAtlas, mapGeneratorConfig, &m_TileAnimationDatabase);
+
+    // TileMapGenerator::Config mapGeneratorConfig;
+    // TileMapGenerator::generateTerrain(m_TileMap, m_TileMapAtlas, mapGeneratorConfig, &m_TileAnimationDatabase);
+
+    const ItemDefinition* containerItem = m_ItemDatabase.getItem("test_container_item");
+    const Sprite containerSprite = containerItem ? containerItem->placeableSprite : m_ItemAtlas.getSprite(0, 0);
+
+    const Entity pickupContainer = factory.createStorageContainer(
+        {40.0f * 32.0f, 18.0f * 32.0f},
+        containerSprite,
+        {4, 4},
+        {1, 1},
+        true
+    );
+
+    const Entity dropOffContainer = factory.createStorageContainer(
+        {45.0f * 32.0f, 18.0f * 32.0f},
+        containerSprite,
+        {4, 4},
+        {1, 1},
+        true
+    );
+
+    if (auto* pickupInventory = m_Components.m_Inventories.get(pickupContainer)) {
+        pickupInventory->inventory.addItem(m_ItemDatabase.getItem("iron_ingot"), 5);
+    }
+
+    factory.createHaulerBot({35.0f * 32.0f, 18.0f * 32.0f}, m_ItemAtlas.getSprite(10, 10));
+    m_RobotTaskBoard.addDeliverItemTask("iron_ingot", 5, pickupContainer, dropOffContainer);
+
 
     LOG_INFO("World initialized player={} tilePalettes={} mapLayers={}",
              m_Player,

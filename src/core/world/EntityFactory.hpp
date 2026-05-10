@@ -30,6 +30,7 @@ public:
     Entity createFluidPipe(Vec2f position, Sprite sprite, Direction direction) const;
     Entity createFluidTank(Vec2f position, Sprite sprite) const;
     Entity createFluidPump(Vec2f position, Sprite sprite, Direction outputDirection, const FluidDefinition *outputFluid, float outputPerSecond) const;
+    Entity createHaulerBot(Vec2f position, Sprite sprite) const;
 
 private:
     EntityManager &m_EntityManager;

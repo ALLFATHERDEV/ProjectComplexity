@@ -1,0 +1,35 @@
+target_sources(
+        ProjectComplexity PRIVATE
+        RenderSystem.cpp
+        RenderSystem.hpp
+        AnimationSystem.cpp
+        AnimationSystem.hpp
+        AnimatedRenderSystem.cpp
+        AnimatedRenderSystem.hpp
+        MovementSystem.cpp
+        MovementSystem.hpp
+        InputSystem.cpp
+        InputSystem.hpp
+        MovementInputSystem.cpp
+        MovementInputSystem.hpp
+        CharacterStateSystem.cpp
+        CharacterStateSystem.hpp
+        AnimationStateSystem.cpp
+        AnimationStateSystem.hpp
+        CollisionSystem.cpp
+        CollisionSystem.hpp
+        CraftingSystem.cpp
+        CraftingSystem.hpp
+        MiningSystem.cpp
+        MiningSystem.hpp
+        ConveyorSystem.cpp
+        ConveyorSystem.hpp
+        InteractionSystem.cpp
+        InteractionSystem.hpp
+        FluidSystem.cpp
+        FluidSystem.hpp
+        MachineFluidIOSystem.cpp
+        MachineFluidIOSystem.hpp
+        RobotSystem.cpp
+        RobotSystem.hpp
+)

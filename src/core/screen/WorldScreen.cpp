@@ -3,6 +3,29 @@
 #include "imgui.h"
 #include "../Game.hpp"
 
+namespace {
+    const char* goapActionTypeToString(GoapActionType action) {
+        switch (action) {
+            case GoapActionType::MOVE_TO_PICKUP: return "MoveToPickup";
+            case GoapActionType::PICKUP_ITEM: return "PickUpItem";
+            case GoapActionType::MOVE_TO_DROPOFF: return "MoveToDropoff";
+            case GoapActionType::DROP_OFF_ITEM: return "DropOffItem";
+            default: return "Unknown";
+        }
+    }
+
+    const char* robotTaskStatusToString(RobotTaskStatus status) {
+        switch (status) {
+            case RobotTaskStatus::PENDING: return "Pending";
+            case RobotTaskStatus::RESERVED: return "Reserved";
+            case RobotTaskStatus::COMPLETED: return "Completed";
+            case RobotTaskStatus::INVALID: return "Invalid";
+            case RobotTaskStatus::BLOCKED: return "Blocked";
+            default: return "Unknown";
+        }
+    }
+}
+
 WorldScreen::WorldScreen(ScreenContext &context) : m_Context(context) {
     m_World.setRenderer(&context.renderer);
     m_World.initializeWorld();
@@ -83,7 +106,11 @@ void WorldScreen::handleEvent(SDL_Event &event) {
             m_ItemDebugEditor.setEnabled(!m_ItemDebugEditor.isEnabled());
         }
 
-        if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F3) {
+        if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F3 && !event.key.repeat) {
+            m_ShowDebugOverlay = !m_ShowDebugOverlay;
+        }
+
+        if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F4) {
             const Vec2f mouseWorldPosition = getMouseWorldPosition();
             const int mouseTileX = static_cast<int>(mouseWorldPosition.x) / 32;
             const int mouseTileY = static_cast<int>(mouseWorldPosition.y) / 32;
@@ -215,7 +242,11 @@ void WorldScreen::renderDraggedPlaceablePreview() {
 }
 
 void WorldScreen::renderDebugOverlay() {
-     const Vec2f playerPosition = m_World.getPlayerPosition();
+    if (!m_ShowDebugOverlay) {
+        return;
+    }
+
+    const Vec2f playerPosition = m_World.getPlayerPosition();
     const int tileX = static_cast<int>(playerPosition.x) / 32;
     const int tileY = static_cast<int>(playerPosition.y) / 32;
     const ChunkManager& chunkManager = m_World.getChunkManager();
@@ -223,6 +254,8 @@ void WorldScreen::renderDebugOverlay() {
     const int chunkY = chunkManager.getCenterChunkY();
     const float zoom = m_World.getCamera().getZoom();
     const std::vector<FluidNetwork>& fluidNetworks = m_World.getFluidSystem().getNetworks();
+    const auto& robotTasks = m_World.getRobotTaskBoard().getTasks();
+    const auto& robotEntities = m_World.getRobots().getEntities();
     const size_t queuedSprites = m_Context.renderer.getLastQueuedSpriteCount();
     const size_t textureSwitches = m_Context.renderer.getLastTextureSwitchCount();
 
@@ -261,7 +294,59 @@ void WorldScreen::renderDebugOverlay() {
                         network.fluid.amount,
                         network.fluid.fluid ? network.fluid.fluid->displayName.c_str() : "Empty");
         }
-        ImGui::Text("F3: Fill hovered tank with Water");
+
+        ImGui::SeparatorText("Robot Tasks");
+        ImGui::Text("Tasks: %d", static_cast<int>(robotTasks.size()));
+        for (const RobotTask& task : robotTasks) {
+            ImGui::Text("Task %d %s item=%s amt=%d pickup=%d dropoff=%d by=%d",
+                        task.id,
+                        robotTaskStatusToString(task.status),
+                        task.itemName.c_str(),
+                        task.amount,
+                        task.pickupEntity,
+                        task.dropOffEntity,
+                        task.reservedBy);
+            if (!task.lastFailureReason.empty()) {
+                ImGui::Text("  reason: %s", task.lastFailureReason.c_str());
+            }
+        }
+
+        ImGui::SeparatorText("Robots");
+        for (Entity robot : robotEntities) {
+            const RobotBrainComponent* brain = m_World.getRobotBrains().get(robot);
+            const RobotCarryComponent* carry = m_World.getRobotCarries().get(robot);
+            const PositionComponent* pos = m_World.getComponents().m_Positions.get(robot);
+
+            if (!brain || !carry || !pos) {
+                continue;
+            }
+
+            ImGui::Text("Robot %d pos=(%.0f, %.0f) task=%d plan=%d idx=%d target=%d",
+                        robot,
+                        pos->position.x,
+                        pos->position.y,
+                        brain->currentTaskId,
+                        static_cast<int>(brain->currentPlan.size()),
+                        static_cast<int>(brain->currentPlanIndex),
+                        brain->runtimeTargetEntity);
+
+            if (!carry->carriedItem.isEmpty() && carry->carriedItem.item) {
+                ImGui::Text("  carry: %s x%d",
+                            carry->carriedItem.item->uniqueName.c_str(),
+                            carry->carriedItem.amount);
+            } else {
+                ImGui::Text("  carry: empty");
+            }
+
+            if (brain->currentPlanIndex < brain->currentPlan.size()) {
+                ImGui::Text("  action: %s", goapActionTypeToString(brain->currentPlan[brain->currentPlanIndex]));
+            } else {
+                ImGui::Text("  action: none");
+            }
+        }
+
+        ImGui::Text("F3: Toggle debug overlay");
+        ImGui::Text("F4: Fill hovered tank with Water");
     }
     ImGui::End();
 }

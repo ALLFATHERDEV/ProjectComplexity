@@ -21,6 +21,9 @@
 #include "component/AnimationControllerComponent.hpp"
 #include "component/InputComponent.hpp"
 #include "component/VelocityComponent.hpp"
+#include "component/robot/RobotBrainComponent.hpp"
+#include "component/robot/RobotCarryComponent.hpp"
+#include "component/robot/RobotComponent.hpp"
 
 struct ComponentRegistry {
 public:
@@ -46,4 +49,7 @@ public:
     ComponentStorage<CraftingMachineComponent> m_CraftingMachines;
     ComponentStorage<MinerComponent> m_Miners;
     ComponentStorage<InteractionComponent> m_Interactions;
+    ComponentStorage<RobotComponent> m_Robots;
+    ComponentStorage<RobotBrainComponent> m_RobotBrains;
+    ComponentStorage<RobotCarryComponent> m_RobotCarries;
 };
