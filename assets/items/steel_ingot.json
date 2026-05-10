@@ -1,8 +1,10 @@
 {
-  "uniqueName": "steel_ingot",
-  "id": 8,
   "displayName": "Steel Ingot",
+  "fuelValue": 0.0,
+  "iconAtlasX": 7,
+  "iconAtlasY": 9,
+  "id": 8,
+  "isPlaceable": false,
   "maxStackSize": 32,
-  "iconAtlasX": 9,
-  "iconAtlasY": 120
+  "uniqueName": "steel_ingot"
 }

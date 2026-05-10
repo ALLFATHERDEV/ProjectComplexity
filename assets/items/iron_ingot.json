@@ -1,8 +1,8 @@
 {
   "displayName": "Iron Ingot",
   "fuelValue": 0.0,
-  "iconAtlasX": 9,
-  "iconAtlasY": 12,
+  "iconAtlasX": 3,
+  "iconAtlasY": 9,
   "id": 1,
   "isPlaceable": false,
   "maxStackSize": 64,

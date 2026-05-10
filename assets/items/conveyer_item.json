@@ -1,16 +1,16 @@
 {
   "displayName": "Basic Belt",
   "fuelValue": 0.0,
-  "iconAtlasX": 2,
-  "iconAtlasY": 133,
+  "iconAtlasX": 10,
+  "iconAtlasY": 39,
   "id": 9,
   "isPlaceable": true,
   "maxStackSize": 100,
   "placeableBlocking": false,
   "placeableHeightTiles": 1,
   "placeableLayer": 1,
-  "placesConveyorBelt": true,
   "placeableTexturePath": "assets/conveyor_sprites.png",
   "placeableWidthTiles": 1,
+  "placesConveyorBelt": true,
   "uniqueName": "conveyer_item"
 }

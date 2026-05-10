@@ -97,6 +97,14 @@ void GUIMachine::create(GUISystem &guiSystem, GUIDragContext* dragContext) {
     m_PlayerInventoryGrid->setDragContext(dragContext);
     m_PlayerInventoryGrid->setShiftClickFn([this](InventorySlot& slot) { return handlePlayerShiftClick(slot); });
     m_PlayerInventoryGrid->setVisible(false);
+
+    updatePlayerInventoryLayout();
+}
+
+void GUIMachine::setViewportSize(float width, float height) {
+    m_ViewportWidth = width;
+    m_ViewportHeight = height;
+    updatePlayerInventoryLayout();
 }
 
 void GUIMachine::open(Entity machine) {
@@ -637,6 +645,8 @@ void GUIMachine::showPlayerInventory() {
         return;
     }
 
+    updatePlayerInventoryLayout();
+
     if (m_PlayerInventoryPanel) {
         m_PlayerInventoryPanel->setVisible(true);
     }
@@ -853,4 +863,40 @@ void GUIMachine::setFluidWidgetsVisible(bool visible) {
             }
         }
     }
+}
+
+void GUIMachine::updatePlayerInventoryLayout() {
+    if (!m_PlayerInventoryPanel || !m_PlayerInventoryGrid) {
+        return;
+    }
+
+    constexpr float panelWidth = 600.0f;
+    constexpr float panelHeight = 360.0f;
+    constexpr float panelPaddingX = 40.0f;
+    constexpr float panelPaddingY = 60.0f;
+    constexpr float screenMargin = 20.0f;
+
+    float panelX = screenMargin;
+    float panelY = std::max(screenMargin, (m_ViewportHeight - panelHeight) * 0.5f);
+
+    if (m_Open) {
+        panelX = std::max(screenMargin, m_ViewportWidth - panelWidth - screenMargin);
+    } else {
+        panelX = std::max(screenMargin, (m_ViewportWidth - panelWidth) * 0.5f);
+    }
+
+    m_PlayerInventoryPanel->setPosition(panelX, panelY);
+    m_PlayerInventoryPanel->setSize(panelWidth, panelHeight);
+    m_PlayerInventoryGrid->setPosition(panelX + panelPaddingX, panelY + panelPaddingY);
+
+    // LOG_INFO("GUIMachine: player inventory layout open={} viewport=({}, {}) panel=({}, {}, {}, {}) grid=({}, {})",
+    //          m_Open,
+    //          m_ViewportWidth,
+    //          m_ViewportHeight,
+    //          panelX,
+    //          panelY,
+    //          panelWidth,
+    //          panelHeight,
+    //          panelX + panelPaddingX,
+    //          panelY + panelPaddingY);
 }

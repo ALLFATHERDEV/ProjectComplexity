@@ -42,10 +42,21 @@ void TileMapLayer::createLayer(int width, int height, int cellWidth, int cellHei
 }
 
 void TileMapLayer::render(Renderer* renderer, const Camera2D& camera, const ChunkManager& chunkManager) {
-    const int startX = std::max(0, chunkManager.getLoadedTileMinX());
-    const int startY = std::max(0, chunkManager.getLoadedTileMinY());
-    const int endX = std::min(m_Width - 1, chunkManager.getLoadedTileMaxX());
-    const int endY = std::min(m_Height - 1, chunkManager.getLoadedTileMaxY());
+    (void)chunkManager;
+
+    int viewportWidth = 0;
+    int viewportHeight = 0;
+    SDL_GetRenderOutputSize(renderer->getSDLRenderer(), &viewportWidth, &viewportHeight);
+
+    const float worldLeft = camera.getX();
+    const float worldTop = camera.getY();
+    const float worldRight = camera.getX() + static_cast<float>(viewportWidth) / camera.getZoom();
+    const float worldBottom = camera.getY() + static_cast<float>(viewportHeight) / camera.getZoom();
+
+    const int startX = std::max(0, static_cast<int>(worldLeft) / m_CellWidth - 1);
+    const int startY = std::max(0, static_cast<int>(worldTop) / m_CellHeight - 1);
+    const int endX = std::min(m_Width - 1, static_cast<int>(worldRight) / m_CellWidth + 1);
+    const int endY = std::min(m_Height - 1, static_cast<int>(worldBottom) / m_CellHeight + 1);
 
     if (endX < startX || endY < startY) {
         return;

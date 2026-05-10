@@ -1,16 +1,13 @@
 #ifndef PROJECTCOMPLEXITY_GAME_H
 #define PROJECTCOMPLEXITY_GAME_H
 
+#include <memory>
+
 #include <SDL3/SDL.h>
 
-#include "editor/ItemDebugEditor.hpp"
-#include "editor/TileMapEditor.hpp"
 #include "graphics/Renderer.hpp"
-#include "gui/GUISystem.hpp"
-#include "gui/craftingmachine/GUIMachine.hpp"
-#include "gui/elements/GUIDragPeview.hpp"
-#include "world/World.hpp"
-
+#include "screen/IScreen.hpp"
+#include "screen/ScreenContext.hpp"
 
 class Game {
 public:
@@ -20,6 +17,8 @@ public:
     void run();
     void events();
     void render();
+    void changeScreen(std::unique_ptr<IScreen> screen);
+    void requestQuit() { m_Running = false; }
 
     static int WINDOW_WIDTH;
     static int WINDOW_HEIGHT;
@@ -28,24 +27,9 @@ private:
     SDL_Window* m_Window = nullptr;
     bool m_Running = true;
 
-    GUISystem m_GUISystem;
-    GUIMachine m_MachineGUI;
-    GUIDragContext m_GUIDragContext;
-    GUIDragPreview* m_GUIDragPreview;
-
     Renderer m_Renderer;
-    World m_World;
-    TileMapEditor m_TileMapEditor;
-    ItemDebugEditor m_ItemDebugEditor;
-    Direction m_SelectedPlaceableDirection = Direction::RIGHT;
-
-    bool isDraggingPlaceableItem() const;
-    bool isDraggingConveyorPlaceableItem() const;
-    bool tryPlaceDraggedItem(const SDL_Event& event);
-    void renderDraggedPlaceablePreview();
-    void renderDebugOverlay();
-    Vec2f getMouseWorldPosition();
-    void rotateSelectedPlaceableDirection();
+    ScreenContext m_ScreenContext;
+    std::unique_ptr<IScreen> m_CurrentScreen;
 
 };
 

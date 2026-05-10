@@ -282,17 +282,37 @@ bool World::placeItem(const ItemDefinition& item, int tileX, int tileY, Directio
 
     if (item.placesStorageContainer) {
         EntityFactory factory(m_EntityManager, m_Components, m_AnimationLibrary);
-
-        return factory.createStorageContainer(
+        const Entity entity = factory.createStorageContainer(
             {static_cast<float>(tileX * 32), static_cast<float>(tileY * 32)},
             item.placeableSprite,
             {item.containerInventoryWidth, item.containerInventoryHeight},
             {item.placeableWidthTiles, item.placeableHeightTiles},
             item.placeableBlocking
-        ) != -1;
+        );
+        if (entity != -1) {
+            LOG_INFO("World: placed storage container item {} entity={} at ({}, {}) size={}x{}",
+                     item.uniqueName,
+                     entity,
+                     tileX,
+                     tileY,
+                     item.placeableWidthTiles,
+                     item.placeableHeightTiles);
+        }
+        return entity != -1;
     }
 
-    return m_TileMap.setTileObject(tileX, tileY, item.placeableSprite, item.placeableLayer, item.placeableWidthTiles, item.placeableHeightTiles, item.placeableBlocking, item.uniqueName);
+    const bool placed = m_TileMap.setTileObject(tileX, tileY, item.placeableSprite, item.placeableLayer, item.placeableWidthTiles, item.placeableHeightTiles, item.placeableBlocking, item.uniqueName);
+    if (placed) {
+        LOG_INFO("World: placed tile object item {} at ({}, {}) layer={} size={}x{} blocking={}",
+                 item.uniqueName,
+                 tileX,
+                 tileY,
+                 item.placeableLayer,
+                 item.placeableWidthTiles,
+                 item.placeableHeightTiles,
+                 item.placeableBlocking);
+    }
+    return placed;
 }
 
 bool World::placeMachine(const std::string& machineUniqueName, int tileX, int tileY, Direction direction) {
@@ -395,6 +415,7 @@ bool World::placeMachine(const std::string& machineUniqueName, int tileX, int ti
 
 void World::clearMachines() {
     std::vector<Entity> machineEntities = m_Components.m_MachineEntities.getEntities();
+    const size_t machineCount = machineEntities.size();
     bool removedFluidMachine = false;
     for (Entity entity : machineEntities) {
         const PositionComponent* position = m_Components.m_Positions.get(entity);
@@ -446,6 +467,10 @@ void World::clearMachines() {
 
     if (removedFluidMachine) {
         m_FluidSystem.markNetworksDirty();
+    }
+
+    if (machineCount > 0) {
+        LOG_INFO("World: cleared {} machine entities", static_cast<int>(machineCount));
     }
 }
 
@@ -530,18 +555,22 @@ void World::renderPlacementPreview(const ItemDefinition& item, int tileX, int ti
 
 void World::placeConveyorBelt(int tileX, int tileY, Direction direction) {
     m_ConveyorManager.placeConveyorBelt(tileX, tileY, direction);
+    LOG_INFO("World: place conveyor belt at ({}, {}) direction={}", tileX, tileY, static_cast<int>(direction));
 }
 
 void World::removeConveyorBelt(int tileX, int tileY) {
     m_ConveyorManager.removeConveyorBelt(tileX, tileY);
+    LOG_INFO("World: remove conveyor belt at ({}, {})", tileX, tileY);
 }
 
 void World::placeFluidPipe(int tileX, int tileY, Direction direction) {
     m_FluidManager.placeFluidPipe(tileX, tileY, direction);
+    LOG_INFO("World: place fluid pipe at ({}, {}) direction={}", tileX, tileY, static_cast<int>(direction));
 }
 
 void World::removeFluidPipe(int tileX, int tileY) {
     m_FluidManager.removeFluidPipe(tileX, tileY);
+    LOG_INFO("World: remove fluid pipe at ({}, {})", tileX, tileY);
 }
 
 void World::placeFluidTank(int tileX, int tileY) {
@@ -550,6 +579,7 @@ void World::placeFluidTank(int tileX, int tileY) {
 
 void World::removeFluidTank(int tileX, int tileY) {
     m_FluidManager.removeFluidTank(tileX, tileY);
+    LOG_INFO("World: remove fluid tank at ({}, {})", tileX, tileY);
 }
 
 void World::placeFluidPump(int tileX, int tileY, Direction direction) {
@@ -558,6 +588,7 @@ void World::placeFluidPump(int tileX, int tileY, Direction direction) {
 
 void World::removeFluidPump(int tileX, int tileY) {
     m_FluidManager.removeFluidPump(tileX, tileY);
+    LOG_INFO("World: remove fluid pump at ({}, {})", tileX, tileY);
 }
 
 bool World::addDebugFluidToTank(int tileX, int tileY, float amount) {
@@ -565,7 +596,11 @@ bool World::addDebugFluidToTank(int tileX, int tileY, float amount) {
 }
 
 void World::clearConveyorBelts() {
+    const auto conveyorCount = getConveyorBeltData().size();
     m_ConveyorManager.clearConveyorBelts();
+    if (conveyorCount > 0) {
+        LOG_INFO("World: cleared {} conveyor belts", static_cast<int>(conveyorCount));
+    }
 }
 
 std::vector<std::tuple<int, int, Direction>> World::getConveyorBeltData() const {
@@ -672,5 +707,8 @@ void World::initializeWorld() {
     TileMapGenerator::Config mapGeneratorConfig;
     TileMapGenerator::generateTerrain(m_TileMap, m_TileMapAtlas, mapGeneratorConfig, &m_TileAnimationDatabase);
 
-    LOG_INFO("World initialized");
+    LOG_INFO("World initialized player={} tilePalettes={} mapLayers={}",
+             m_Player,
+             static_cast<int>(m_TilePalettes.size()),
+             static_cast<int>(m_TileMap.getLayers().size()));
 }

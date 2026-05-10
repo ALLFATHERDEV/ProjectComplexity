@@ -20,6 +20,7 @@
 class GUIMachine {
 public:
     void create(GUISystem& guiSystem, GUIDragContext* dragContext);
+    void setViewportSize(float width, float height);
 
     void open(Entity machine);
     void openStorage(Entity storage);
@@ -94,4 +95,8 @@ private:
     bool canAcceptOutputStackAtSlot(int slotX, int slotY, const ItemStack& stack) const;
     void updateFluidWidgets();
     void setFluidWidgetsVisible(bool visible);
+    void updatePlayerInventoryLayout();
+
+    float m_ViewportWidth = 1800.0f;
+    float m_ViewportHeight = 1200.0f;
 };
